@@ -1,0 +1,6 @@
+{
+  "name": "Birch Leaf FA Analyzer",
+  "description": "Мобильное приложение для оценки качества окружающей среды по флуктуирующей асимметрии листьев березы повислой (Betula pendula Roch.)",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

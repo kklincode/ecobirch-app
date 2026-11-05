@@ -1,0 +1,27 @@
+{
+  "short_name": "ЭкоБерёза ФА",
+  "name": "Биоиндикация: Флуктуирующая асимметрия листьев берёзы",
+  "description": "Мобильное приложение для экспресс-оценки качества окружающей среды и чистоты воздуха по флуктуирующей асимметрии листьев березы повислой (Betula pendula).",
+  "id": "ru.ecobirch.fa.app",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#064e3b",
+  "theme_color": "#065f46",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=192&h=192&q=80",
+      "type": "image/jpeg",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=512&h=512&q=80",
+      "type": "image/jpeg",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "utilities", "productivity"]
+}
