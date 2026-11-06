@@ -268,26 +268,26 @@ export default function MainScreen() {
         )}
       </div>
 
-      {/* Modern floating glass bottom navigation bar for Telegram Mini App & Mobile */}
+      {/* Android Material Design 3 Navigation Bar */}
       <nav 
         aria-label="Основная навигация" 
-        className="h-16 border-t border-slate-200/70 bg-white/90 backdrop-blur-xl px-4 flex items-center justify-around shrink-0 z-40 select-none pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(0,0,0,0.03)]"
+        className="border-t border-slate-200/80 bg-white/95 backdrop-blur-md px-2 flex items-center justify-around shrink-0 z-40 select-none pt-1 pb-[max(env(safe-area-inset-bottom,0px),8px)] shadow-[0_-2px_12px_rgba(0,0,0,0.05)]"
       >
         {/* TAB 1: SCAN */}
         <button
           onClick={() => switchTab("scan")}
-          className={`flex flex-col items-center gap-1 transition-all outline-none cursor-pointer tap-bounce py-1 px-3 rounded-2xl relative ${
-            activeTab === "scan" ? "text-emerald-700" : "text-slate-400 hover:text-slate-600"
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 outline-none cursor-pointer transition-all tap-bounce ${
+            activeTab === "scan" ? "text-emerald-950" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <div className={`p-1.5 rounded-xl transition-all ${
+          <div className={`w-14 h-8 rounded-full flex items-center justify-center transition-all ${
             activeTab === "scan" 
-              ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 ring-2 ring-emerald-600/20" 
-              : "bg-transparent text-slate-500"
+              ? "bg-emerald-100 text-emerald-900 shadow-xs font-semibold" 
+              : "bg-transparent text-slate-600"
           }`}>
-            <Camera className="w-4 h-4 stroke-[2.2]" />
+            <Camera className={`w-5 h-5 ${activeTab === "scan" ? "stroke-[2.4]" : "stroke-[2]"}`} />
           </div>
-          <span className={`text-[10px] tracking-tight ${activeTab === "scan" ? "font-bold text-emerald-800" : "font-medium"}`}>
+          <span className={`text-[11px] leading-tight tracking-tight ${activeTab === "scan" ? "font-bold text-emerald-950" : "font-medium text-slate-600"}`}>
             Сканер
           </span>
         </button>
@@ -298,18 +298,18 @@ export default function MainScreen() {
             switchTab("map");
             setSelectedTerritoryIdForScan(null);
           }}
-          className={`flex flex-col items-center gap-1 transition-all outline-none cursor-pointer tap-bounce py-1 px-3 rounded-2xl relative ${
-            activeTab === "map" ? "text-emerald-700" : "text-slate-400 hover:text-slate-600"
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 outline-none cursor-pointer transition-all tap-bounce ${
+            activeTab === "map" ? "text-emerald-950" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <div className={`p-1.5 rounded-xl transition-all ${
+          <div className={`w-14 h-8 rounded-full flex items-center justify-center transition-all ${
             activeTab === "map" 
-              ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 ring-2 ring-emerald-600/20" 
-              : "bg-transparent text-slate-500"
+              ? "bg-emerald-100 text-emerald-900 shadow-xs font-semibold" 
+              : "bg-transparent text-slate-600"
           }`}>
-            <Map className="w-4 h-4 stroke-[2.2]" />
+            <Map className={`w-5 h-5 ${activeTab === "map" ? "stroke-[2.4]" : "stroke-[2]"}`} />
           </div>
-          <span className={`text-[10px] tracking-tight ${activeTab === "map" ? "font-bold text-emerald-800" : "font-medium"}`}>
+          <span className={`text-[11px] leading-tight tracking-tight ${activeTab === "map" ? "font-bold text-emerald-950" : "font-medium text-slate-600"}`}>
             Карта
           </span>
         </button>
@@ -317,21 +317,21 @@ export default function MainScreen() {
         {/* TAB 3: HISTORY ARCHIVE */}
         <button
           onClick={() => switchTab("history")}
-          className={`flex flex-col items-center gap-1 transition-all outline-none cursor-pointer tap-bounce py-1 px-3 rounded-2xl relative ${
-            activeTab === "history" ? "text-emerald-700" : "text-slate-400 hover:text-slate-600"
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 outline-none cursor-pointer transition-all tap-bounce ${
+            activeTab === "history" ? "text-emerald-950" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <div className={`p-1.5 rounded-xl transition-all relative ${
+          <div className={`w-14 h-8 rounded-full flex items-center justify-center transition-all relative ${
             activeTab === "history" 
-              ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 ring-2 ring-emerald-600/20" 
-              : "bg-transparent text-slate-500"
+              ? "bg-emerald-100 text-emerald-900 shadow-xs font-semibold" 
+              : "bg-transparent text-slate-600"
           }`}>
-            <ClipboardList className="w-4 h-4 stroke-[2.2]" />
+            <ClipboardList className={`w-5 h-5 ${activeTab === "history" ? "stroke-[2.4]" : "stroke-[2]"}`} />
             {territories.length > 0 && activeTab !== "history" && (
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+              <span className="absolute top-1.5 right-3 w-2 h-2 rounded-full bg-emerald-600 ring-2 ring-white" />
             )}
           </div>
-          <span className={`text-[10px] tracking-tight ${activeTab === "history" ? "font-bold text-emerald-800" : "font-medium"}`}>
+          <span className={`text-[11px] leading-tight tracking-tight ${activeTab === "history" ? "font-bold text-emerald-950" : "font-medium text-slate-600"}`}>
             Журнал
           </span>
         </button>
@@ -339,18 +339,18 @@ export default function MainScreen() {
         {/* TAB 4: METHODOLOGY GUIDE */}
         <button
           onClick={() => switchTab("info")}
-          className={`flex flex-col items-center gap-1 transition-all outline-none cursor-pointer tap-bounce py-1 px-3 rounded-2xl relative ${
-            activeTab === "info" ? "text-emerald-700" : "text-slate-400 hover:text-slate-600"
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 px-1 outline-none cursor-pointer transition-all tap-bounce ${
+            activeTab === "info" ? "text-emerald-950" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <div className={`p-1.5 rounded-xl transition-all ${
+          <div className={`w-14 h-8 rounded-full flex items-center justify-center transition-all ${
             activeTab === "info" 
-              ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 ring-2 ring-emerald-600/20" 
-              : "bg-transparent text-slate-500"
+              ? "bg-emerald-100 text-emerald-900 shadow-xs font-semibold" 
+              : "bg-transparent text-slate-600"
           }`}>
-            <BookOpen className="w-4 h-4 stroke-[2.2]" />
+            <BookOpen className={`w-5 h-5 ${activeTab === "info" ? "stroke-[2.4]" : "stroke-[2]"}`} />
           </div>
-          <span className={`text-[10px] tracking-tight ${activeTab === "info" ? "font-bold text-emerald-800" : "font-medium"}`}>
+          <span className={`text-[11px] leading-tight tracking-tight ${activeTab === "info" ? "font-bold text-emerald-950" : "font-medium text-slate-600"}`}>
             Методика
           </span>
         </button>

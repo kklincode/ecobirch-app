@@ -14,7 +14,7 @@ declare global {
   }
 }
 
-// Setup Yandex API Key access based on AI Studio Environment Guidelines
+// Setup Yandex API Key access safely across client and server
 const API_KEY =
   (typeof process !== "undefined" && (process as any)?.env?.YANDEX_MAPS_API_KEY) ||
   (import.meta as any).env?.VITE_YANDEX_MAPS_API_KEY ||

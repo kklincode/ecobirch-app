@@ -7,7 +7,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Body parser for larger image payloads (e.g. from mobile cameras)
 app.use(express.json({ limit: "20mb" }));
@@ -446,6 +446,38 @@ app.get(["/.well-known/assetlinks.json", "/assetlinks.json"], (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cache-Control", "public, max-age=86400");
   res.status(200).json(assetLinksPayload);
+});
+
+// Explicit endpoint for PWA manifest to ensure Bubblewrap/TWA always gets pure JSON
+app.get("/manifest.json", (req, res) => {
+  const filePath = path.join(process.cwd(), "public", "manifest.json");
+  res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.sendFile(filePath);
+});
+
+// Explicit endpoint for app-icon.png and favicon.png
+app.get(["/app-icon.png", "/favicon.png"], (req, res) => {
+  const filePath = path.join(process.cwd(), "public", "app-icon.png");
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.sendFile(filePath);
+});
+
+// Explicit download endpoints for archive packages
+app.get("/rustore-package.tar.gz", (req, res) => {
+  const filePath = path.join(process.cwd(), "public", "rustore-package.tar.gz");
+  res.setHeader("Content-Type", "application/gzip");
+  res.setHeader("Content-Disposition", 'attachment; filename="rustore-package.tar.gz"');
+  res.sendFile(filePath);
+});
+
+app.get(["/birch-leaf-app-source.tar.gz", "/birch-leaf-app-source.zip"], (req, res) => {
+  const filePath = path.join(process.cwd(), "public", "birch-leaf-app-source.tar.gz");
+  res.setHeader("Content-Type", "application/octet-stream");
+  res.setHeader("Content-Disposition", 'attachment; filename="birch-leaf-app-source.tar.gz"');
+  res.sendFile(filePath);
 });
 
 // ------------------------------------
