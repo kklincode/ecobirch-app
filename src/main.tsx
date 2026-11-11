@@ -12,10 +12,13 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-class GlobalErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class GlobalErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false, error: null };
+  props: ErrorBoundaryProps;
+
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.props = props;
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
@@ -33,7 +36,7 @@ class GlobalErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
           <div className="w-16 h-16 rounded-full bg-emerald-800/80 border border-emerald-500/40 flex items-center justify-center mb-4 text-2xl shadow-lg">
             🍃
           </div>
-          <h1 className="text-xl font-bold mb-2 text-center text-emerald-100">ЭкоБерёза ФА</h1>
+          <h1 className="text-xl font-bold mb-2 text-center text-emerald-100">Betula</h1>
           <p className="text-xs text-emerald-300/80 text-center max-w-xs mb-6">
             Инициализация компонентов приложения...
           </p>

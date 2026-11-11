@@ -480,6 +480,13 @@ app.get(["/birch-leaf-app-source.tar.gz", "/birch-leaf-app-source.zip"], (req, r
   res.sendFile(filePath);
 });
 
+app.get("/ecobirch-project.zip", (req, res) => {
+  const filePath = path.join(process.cwd(), "public", "ecobirch-project.zip");
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader("Content-Disposition", 'attachment; filename="ecobirch-project.zip"');
+  res.sendFile(filePath);
+});
+
 // ------------------------------------
 // VITE MIDDLEWARE SETUP
 // ------------------------------------
