@@ -1,0 +1,16 @@
+{
+  "packageId": "ru.ecobirch.fa.app",
+  "host": "ecobirch-app.vercel.app",
+  "name": "Betula",
+  "launcherName": "Betula",
+  "themeColor": "#065f46",
+  "navigationColor": "#064e3b",
+  "backgroundColor": "#064e3b",
+  "startUrl": "/",
+  "iconUrl": "https://ecobirch-app.vercel.app/app-icon.png",
+  "maskableIconUrl": "https://ecobirch-app.vercel.app/app-icon.png",
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "minSdkVersion": 24,
+  "targetSdkVersion": 34
+}

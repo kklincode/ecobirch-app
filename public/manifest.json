@@ -6,21 +6,37 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay"],
   "background_color": "#064e3b",
   "theme_color": "#065f46",
   "orientation": "portrait",
+  "lang": "ru",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/app-icon.png",
+      "src": "/icons/icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/app-icon.png",
+      "src": "/icons/icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-1024.png",
+      "type": "image/png",
+      "sizes": "1024x1024",
+      "purpose": "any"
     }
   ],
   "categories": ["education", "utilities", "productivity"]

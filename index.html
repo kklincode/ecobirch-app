@@ -1,112 +1,119 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Birch Leaf FA Analyzer</title>
-    <meta name="description" content="Мобильное приложение для оценки качества окружающей среды по флуктуирующей асимметрии листьев березы повислой (Betula pendula Roch.)" />
-    <meta property="og:title" content="Birch Leaf FA Analyzer" />
-    <meta property="og:description" content="Мобильное приложение для оценки качества окружающей среды по флуктуирующей асимметрии листьев березы повислой (Betula pendula Roch.)" />
-    <!-- Telegram Mini App SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- PWA configuration for mobile standalone installment -->
+    <title>Betula: Биоиндикация флуктуирующей асимметрии</title>
+    <meta name="description" content="Мобильное приложение для экспресс-оценки качества окружающей среды и чистоты воздуха по флуктуирующей асимметрии листьев березы повислой (Betula pendula Roch.)" />
+    <meta property="og:title" content="Betula: Биоиндикация флуктуирующей асимметрии" />
+    <meta property="og:description" content="Мобильное приложение для экспресс-оценки качества окружающей среды и чистоты воздуха по флуктуирующей асимметрии листьев березы повислой" />
+    <meta property="og:image" content="/icons/icon-512.png" />
+
+    <!-- Favicon & PWA Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/png" href="/app-icon.png" />
-    <link rel="apple-touch-icon" href="/app-icon.png" />
+
     <meta name="theme-color" content="#065f46" />
     <meta name="color-scheme" content="light" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Non-blocking Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <script>
-      (function() {
-        if (typeof window !== "undefined" && window.WebSocket) {
-          var RealWS = window.WebSocket;
-          window.WebSocket = function(url, protocols) {
-            var sUrl = String(url || "");
-            if (sUrl.includes("vite") || sUrl.includes("ais-dev") || protocols === "vite-hmr" || !protocols) {
-              var handlers = {};
-              var mock = {
-                url: sUrl,
-                readyState: 1,
-                protocol: protocols || "",
-                extensions: "",
-                bufferedAmount: 0,
-                send: function() {},
-                close: function() {
-                  mock.readyState = 3;
-                  if (typeof mock.onclose === "function") mock.onclose({ type: "close" });
-                },
-                addEventListener: function(evt, fn) {
-                  handlers[evt] = handlers[evt] || [];
-                  handlers[evt].push(fn);
-                  if (evt === "open") {
-                    setTimeout(function() { try { fn({ type: "open" }); } catch(e){} }, 10);
-                  }
-                },
-                removeEventListener: function(evt, fn) {
-                  if (handlers[evt]) {
-                    handlers[evt] = handlers[evt].filter(function(h) { return h !== fn; });
-                  }
-                },
-                dispatchEvent: function() { return true; }
-              };
-              Object.defineProperty(mock, "onopen", { set: function(f) { mock.addEventListener("open", f); } });
-              Object.defineProperty(mock, "onmessage", { set: function(f) { mock.addEventListener("message", f); } });
-              Object.defineProperty(mock, "onerror", { set: function(f) { mock.addEventListener("error", f); } });
-              Object.defineProperty(mock, "onclose", { set: function(f) { mock.addEventListener("close", f); } });
-              return mock;
-            }
-            return new RealWS(url, protocols);
-          };
-          window.WebSocket.prototype = RealWS.prototype;
-          window.WebSocket.CONNECTING = 0;
-          window.WebSocket.OPEN = 1;
-          window.WebSocket.CLOSING = 2;
-          window.WebSocket.CLOSED = 3;
-        }
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 
-        window.addEventListener("error", function(e) {
-          var s = String(e?.message || e?.filename || e?.error?.stack || "");
-          if (s.includes("WebSocket") || s.includes("@vite/client") || s.includes("ModuleRunnerTransport")) {
-            e.preventDefault && e.preventDefault();
-            e.stopImmediatePropagation && e.stopImmediatePropagation();
-            return true;
-          }
-        }, true);
+    <!-- Non-blocking Telegram SDK -->
+    <script async src="https://telegram.org/js/telegram-web-app.js" onerror="console.warn('Telegram SDK unavailable in standalone/offline mode')"></script>
 
-        window.addEventListener("unhandledrejection", function(e) {
-          var s = String(e?.reason?.message || e?.reason?.stack || e?.reason || "");
-          if (s.includes("WebSocket") || s.includes("@vite/client") || s.includes("ModuleRunnerTransport")) {
-            e.preventDefault && e.preventDefault();
-            e.stopImmediatePropagation && e.stopImmediatePropagation();
-          }
-        });
-      })();
-    </script>
+    <!-- Instant Native CSS Splash Screen -->
+    <style>
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        background: #064e3b;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+        color: #fff;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        transition: opacity 0.3s ease-out;
+      }
+      .splash-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        margin-bottom: 16px;
+      }
+      .splash-spinner {
+        width: 24px;
+        height: 24px;
+        border: 2.5px solid rgba(255, 255, 255, 0.2);
+        border-top-color: #34d399;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-top: 20px;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
+    <!-- Instant Native Splash Screen -->
+    <div id="app-splash">
+      <img src="/icons/icon-192.png" alt="Betula Logo" class="splash-icon" onerror="this.style.display='none'" />
+      <h1 style="font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.5px;">Betula</h1>
+      <p style="font-size: 12px; color: #a7f3d0; margin: 4px 0 0 0; opacity: 0.9;">Биоиндикация стабильности развития</p>
+      <div class="splash-spinner"></div>
+    </div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+
     <script>
-      // Ignore benign WebSocket / dev-transport reconnect attempts in cloud proxy
-      window.addEventListener('unhandledrejection', (event) => {
-        const str = String(event?.reason?.message || event?.reason || '');
-        if (str.includes('WebSocket') || str.includes('vite') || str.includes('ModuleRunnerTransport')) {
-          event.preventDefault();
-        }
+      // Hide Splash screen once React mounts
+      window.addEventListener('DOMContentLoaded', () => {
+        const observer = new MutationObserver((mutations, obs) => {
+          const root = document.getElementById('root');
+          if (root && root.children.length > 0) {
+            const splash = document.getElementById('app-splash');
+            if (splash) {
+              splash.style.opacity = '0';
+              setTimeout(() => splash.remove(), 300);
+            }
+            obs.disconnect();
+          }
+        });
+        const root = document.getElementById('root');
+        if (root) observer.observe(root, { childList: true });
       });
-      // Register Service Worker for PWA installation support
+
+      // Register Service Worker with clean update flow
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('Service Worker registered successfully!'))
-            .catch(err => console.log('Service Worker registration failed:', err));
+            .then(reg => {
+              reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                if (installingWorker) {
+                  installingWorker.onstatechange = () => {
+                    if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      console.log('New version of Betula is available.');
+                    }
+                  };
+                }
+              };
+            })
+            .catch(err => console.warn('ServiceWorker registration skipped:', err));
         });
       }
     </script>
   </body>
 </html>
-
