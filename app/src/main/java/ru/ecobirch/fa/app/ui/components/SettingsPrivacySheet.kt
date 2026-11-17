@@ -1,5 +1,6 @@
 package ru.ecobirch.fa.app.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,6 +44,8 @@ fun SettingsPrivacyDialog(
     onAcceptPrivacy: (Boolean) -> Unit,
     onSaveGeminiConfig: (Boolean, String) -> Unit,
     onSetIncludeDemoExport: (Boolean) -> Unit,
+    onSetBlindMeasurementMode: (Boolean) -> Unit,
+    onSetEnableZakharovScale: (Boolean) -> Unit,
     onDismissCrashLog: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -52,39 +55,52 @@ fun SettingsPrivacyDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = Color.White,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier
-                    .padding(20.dp)
+                    .padding(22.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
                     text = "Приватность и настройки",
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 18.sp,
+                    fontSize = 21.sp,
                     color = EcoColors.Slate900
                 )
 
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = EcoColors.Emerald50,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, EcoColors.Emerald100)
+                    shape = RoundedCornerShape(16.dp),
+                    color = EcoColors.Emerald50
                 ) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Политика конфиденциальности (152-ФЗ)", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = EcoColors.Emerald900)
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Политика конфиденциальности (152-ФЗ)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = EcoColors.Emerald900
+                        )
                         Text(
                             text = "• Все замеры, координаты и фотографии хранятся локально на вашем устройстве (SQLite Room + внутренняя память).\n" +
-                                "• По умолчанию приложение работает 100% офлайн с локальным алгоритмом поиска контура листа.\n" +
-                                "• Сетевые запросы выполняются только к OpenStreetMap/Nominatim (при загрузке карты и поиске адресов) или к Google Gemini API, если вы добровольно включите опцию ниже и укажете свой API-ключ.",
-                            fontSize = 11.sp,
+                                "• По умолчанию приложение работает офлайн с локальным алгоритмом поиска контура листа.\n" +
+                                "• Сетевые запросы идут только к OpenStreetMap/Nominatim (при загрузке карты и поиске адресов) или к Google Gemini API, если вы добровольно включите эту опцию.",
+                            fontSize = 13.sp,
                             color = EcoColors.Slate700,
-                            lineHeight = 16.sp
+                            lineHeight = 19.sp
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val next = !privacyAccepted
+                                    privacyAccepted = next
+                                    onAcceptPrivacy(next)
+                                }
+                        ) {
                             Checkbox(
                                 checked = privacyAccepted,
                                 onCheckedChange = {
@@ -94,7 +110,7 @@ fun SettingsPrivacyDialog(
                             )
                             Text(
                                 text = "Ознакомлен(а) с условиями обработки данных",
-                                fontSize = 11.sp,
+                                fontSize = 13.5.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = EcoColors.Slate900
                             )
@@ -102,12 +118,18 @@ fun SettingsPrivacyDialog(
                     }
                 }
 
-                HorizontalDivider(color = EcoColors.Slate200)
+                HorizontalDivider(color = EcoColors.Hairline)
 
-                Text("Опциональный ИИ Gemini Vision", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = EcoColors.Slate900)
                 Text(
-                    text = "При включении и наличии согласия фото листа передаётся в Google Gemini API для автоматической расстановки 12 точек. При отключении или отсутствии сети используется локальный анализатор.",
-                    fontSize = 11.sp,
+                    text = "Опциональный ИИ Gemini Vision",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = EcoColors.Slate900
+                )
+                Text(
+                    text = "При включении фото листа передаётся в Google Gemini API для автоматической расстановки 12 точек. При отключении или без сети работает локальный анализатор.",
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
                     color = EcoColors.Slate500
                 )
 
@@ -116,7 +138,7 @@ fun SettingsPrivacyDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Включить Gemini Vision", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Включить Gemini Vision", fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
                     Switch(
                         checked = useGemini,
                         enabled = privacyAccepted,
@@ -127,22 +149,23 @@ fun SettingsPrivacyDialog(
                 OutlinedTextField(
                     value = apiKey,
                     onValueChange = { apiKey = it },
-                    label = { Text("Gemini API Key (необязательно)") },
+                    label = { Text("Gemini API Key (необязательно)", fontSize = 13.sp) },
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                HorizontalDivider(color = EcoColors.Slate200)
+                HorizontalDivider(color = EcoColors.Hairline)
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Включать демо-данные в экспорт JSON", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        Text("По умолчанию демо-территории изолированы", fontSize = 10.sp, color = EcoColors.Slate500)
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text("Включать демо-данные в экспорт JSON", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text("По умолчанию демо-зоны изолированы", fontSize = 12.5.sp, color = EcoColors.Slate500)
                     }
                     Switch(
                         checked = settings.includeDemoInExport,
@@ -150,31 +173,79 @@ fun SettingsPrivacyDialog(
                     )
                 }
 
+                HorizontalDivider(color = EcoColors.Hairline)
+
+                Text(
+                    text = "Научный протокол (Kozlov 2025 / Graham 2021)",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = EcoColors.Slate900
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text("Слепой режим измерений", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Скрывать участок, Z и баллы во время расстановки точек", fontSize = 12.5.sp, color = EcoColors.Slate500)
+                    }
+                    Switch(
+                        checked = settings.blindMeasurementMode,
+                        onCheckedChange = onSetBlindMeasurementMode
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text("Ориентировочная шкала Захарова (1–5)", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Выключено в режиме чистой морфометрии до валидации DA/AS/ME", fontSize = 12.5.sp, color = EcoColors.Slate500)
+                    }
+                    Switch(
+                        checked = settings.enableZakharovScale,
+                        onCheckedChange = onSetEnableZakharovScale
+                    )
+                }
+
                 if (!lastCrashLog.isNullOrBlank()) {
-                    HorizontalDivider(color = EcoColors.Slate200)
+                    HorizontalDivider(color = EcoColors.Hairline)
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFFFFF1F2)
+                        shape = RoundedCornerShape(14.dp),
+                        color = EcoColors.Score5Bg
                     ) {
-                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Диагностика последнего сбоя (данные журнала сохранены)", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = EcoColors.Score5)
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "Диагностика последнего сбоя (данные журнала сохранены)",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = EcoColors.Score5
+                            )
                             Text(
                                 text = lastCrashLog.take(360),
-                                fontSize = 9.sp,
+                                fontSize = 11.5.sp,
                                 fontFamily = FontFamily.Monospace,
                                 color = EcoColors.Slate700
                             )
-                            OutlinedButton(onClick = onDismissCrashLog) {
-                                Text("Скрыть отчёт", fontSize = 11.sp)
+                            OutlinedButton(onClick = onDismissCrashLog, shape = RoundedCornerShape(12.dp)) {
+                                Text("Скрыть отчёт", fontSize = 13.sp)
                             }
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Закрыть")
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f).height(48.dp)
+                    ) {
+                        Text("Закрыть", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                     Button(
                         onClick = {
@@ -182,9 +253,10 @@ fun SettingsPrivacyDialog(
                             onDismiss()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = EcoColors.Emerald600),
-                        modifier = Modifier.weight(1.2f)
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1.25f).height(48.dp)
                     ) {
-                        Text("Сохранить")
+                        Text("Сохранить", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

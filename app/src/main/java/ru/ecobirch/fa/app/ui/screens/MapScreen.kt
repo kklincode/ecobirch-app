@@ -14,6 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,16 +52,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -82,10 +81,12 @@ import ru.ecobirch.fa.app.ui.state.MainViewModel
 import ru.ecobirch.fa.app.ui.state.MapUiState
 import ru.ecobirch.fa.app.ui.theme.EcoColors
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MapScreen(
     state: MapUiState,
     territories: List<Territory>,
+    showZakharovScale: Boolean = false,
     viewModel: MainViewModel
 ) {
     val context = LocalContext.current
@@ -99,7 +100,7 @@ fun MapScreen(
         viewModel.centerMapOnUserGps(granted)
     }
 
-    val mapView = remember {
+    val mapView = androidx.compose.runtime.remember {
         MapView(context).apply {
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
@@ -123,7 +124,6 @@ fun MapScreen(
         }
     }
 
-    // Center camera when trigger changes
     LaunchedEffect(state.centerTrigger) {
         if (state.centerTrigger > 0) {
             mapView.controller.animateTo(GeoPoint(state.centerLat, state.centerLng))
@@ -133,11 +133,9 @@ fun MapScreen(
         }
     }
 
-    // Sync overlays whenever territories or pending pin changes
-    LaunchedEffect(territories, state.pendingPinLat, state.pendingPinLng, state.isAddMode, state.selectedTerritoryId) {
+    LaunchedEffect(territories, state.pendingPinLat, state.pendingPinLng, state.isAddMode, state.selectedTerritoryId, showZakharovScale) {
         mapView.overlays.clear()
 
-        // Tap listener overlay
         mapView.overlays.add(
             MapEventsOverlay(object : MapEventsReceiver {
                 override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
@@ -153,17 +151,18 @@ fun MapScreen(
             })
         )
 
-        // Territory markers
         territories.forEach { terr ->
             val stats = LeafBioindicationEngine.calculateTerritoryStatistics(terr.leaves)
             val color = when {
-                stats.sampleCount == 0 -> EcoColors.Slate400
-                else -> EcoColors.scoreColor(stats.indicativeRating?.score)
+                stats.primaryLeafCount == 0 -> EcoColors.Slate400
+                showZakharovScale -> EcoColors.scoreColor(stats.indicativeRating?.score)
+                else -> EcoColors.Emerald600
             }
             val label = when {
-                stats.sampleCount == 0 -> "0"
-                !stats.isReliable -> "n${stats.sampleCount}"
-                else -> "${stats.indicativeRating?.score ?: "—"}"
+                stats.primaryLeafCount == 0 -> "0"
+                !stats.isReliable -> "n${stats.primaryLeafCount}"
+                showZakharovScale -> "${stats.indicativeRating?.score ?: "—"}"
+                else -> "${stats.treeCount}д"
             }
             val marker = Marker(mapView).apply {
                 position = GeoPoint(terr.latitude, terr.longitude)
@@ -183,7 +182,6 @@ fun MapScreen(
             mapView.overlays.add(marker)
         }
 
-        // Pending placement pin
         val pLat = state.pendingPinLat
         val pLng = state.pendingPinLng
         if (pLat != null && pLng != null) {
@@ -211,17 +209,17 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Top Search Bar & Results
+        // Top Floating Search Bar & Results
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Surface(
-                shape = RoundedCornerShape(16.dp),
-                shadowElevation = 4.dp,
+                shape = RoundedCornerShape(20.dp),
+                shadowElevation = 6.dp,
                 color = Color.White,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -232,7 +230,8 @@ fun MapScreen(
                     OutlinedTextField(
                         value = state.searchQuery,
                         onValueChange = viewModel::updateMapSearchQuery,
-                        placeholder = { Text("Поиск адреса, парка или 55.75, 37.61", fontSize = 12.sp) },
+                        placeholder = { Text("Поиск адреса, парка или 55.75, 37.61", fontSize = 14.sp, color = EcoColors.Slate400) },
+                        textStyle = TextStyle(fontSize = 15.sp, color = EcoColors.Slate900),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color.Transparent,
@@ -243,10 +242,10 @@ fun MapScreen(
                         modifier = Modifier.weight(1f)
                     )
                     if (state.isSearching) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.padding(end = 12.dp).size(22.dp), strokeWidth = 2.5.dp)
                     } else {
                         IconButton(onClick = viewModel::performMapSearch) {
-                            Icon(Icons.Default.Search, contentDescription = "Найти", tint = EcoColors.Emerald600)
+                            Icon(Icons.Default.Search, contentDescription = "Найти", tint = EcoColors.Emerald600, modifier = Modifier.size(24.dp))
                         }
                     }
                 }
@@ -254,22 +253,23 @@ fun MapScreen(
 
             if (state.searchResults.isNotEmpty()) {
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    shadowElevation = 6.dp,
+                    shape = RoundedCornerShape(20.dp),
+                    shadowElevation = 8.dp,
                     color = Color.White,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    LazyColumn(modifier = Modifier.height(190.dp)) {
+                    LazyColumn(modifier = Modifier.height(210.dp)) {
                         items(state.searchResults) { place ->
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { viewModel.selectGeocodeResult(place) }
-                                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                                    .padding(horizontal = 16.dp, vertical = 12.dp)
                             ) {
-                                Text(place.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = EcoColors.Slate900)
+                                Text(place.name, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = EcoColors.Slate900)
                                 if (place.description.isNotBlank()) {
-                                    Text(place.description, fontSize = 11.sp, color = EcoColors.Slate500, maxLines = 1)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(place.description, fontSize = 13.sp, color = EcoColors.Slate500, maxLines = 1)
                                 }
                             }
                             HorizontalDivider(color = EcoColors.Slate100)
@@ -280,12 +280,13 @@ fun MapScreen(
 
             if (state.isAddMode) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = EcoColors.Emerald900.copy(alpha = 0.92f),
+                    shape = RoundedCornerShape(16.dp),
+                    color = EcoColors.Emerald900.copy(alpha = 0.94f),
+                    shadowElevation = 4.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -296,12 +297,12 @@ fun MapScreen(
                                 "Нажмите на карту, чтобы поставить новую точку"
                             },
                             color = Color.White,
-                            fontSize = 11.sp,
+                            fontSize = 13.5.sp,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f)
                         )
-                        IconButton(onClick = viewModel::toggleMapAddMode, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.Close, contentDescription = "Отмена", tint = Color.White, modifier = Modifier.size(16.dp))
+                        IconButton(onClick = viewModel::toggleMapAddMode, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Отмена", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
                     }
                 }
@@ -312,8 +313,8 @@ fun MapScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(end = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.End
         ) {
             SmallFloatingActionButton(
@@ -334,61 +335,72 @@ fun MapScreen(
                         )
                     }
                 },
+                shape = RoundedCornerShape(16.dp),
                 containerColor = Color.White,
-                contentColor = EcoColors.Slate900
+                contentColor = EcoColors.Slate900,
+                modifier = Modifier.size(48.dp)
             ) {
-                Icon(Icons.Default.MyLocation, contentDescription = "Моё местоположение")
+                Icon(Icons.Default.MyLocation, contentDescription = "Моё местоположение", modifier = Modifier.size(22.dp))
             }
 
             FloatingActionButton(
                 onClick = viewModel::toggleMapAddMode,
+                shape = RoundedCornerShape(18.dp),
                 containerColor = if (state.isAddMode) EcoColors.Score4 else EcoColors.Emerald600,
                 contentColor = Color.White
             ) {
                 Icon(
                     imageVector = if (state.isAddMode) Icons.Default.Close else Icons.Default.AddLocationAlt,
-                    contentDescription = "Добавить точку"
+                    contentDescription = "Добавить точку",
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
 
-        // Bottom Area: Pending Pin Creation Card, Selected Territory Card, or Scale Legend
+        // Bottom Area: Pending Pin Card, Selected Territory Card, or Crisp Legend
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (state.isAddMode && state.pendingPinLat != null) {
                 Surface(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(24.dp),
                     shadowElevation = 8.dp,
                     color = Color.White,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Новая территория", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+                    Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Новая территория", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = EcoColors.Slate900)
                         OutlinedTextField(
                             value = state.pendingAddressName,
                             onValueChange = { viewModel.updatePendingTerritoryFields(it, state.pendingAddressDesc) },
-                            label = { Text("Название точки") },
+                            label = { Text("Название точки", fontSize = 13.sp) },
                             singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
                             value = state.pendingAddressDesc,
                             onValueChange = { viewModel.updatePendingTerritoryFields(state.pendingAddressName, it) },
-                            label = { Text("Адрес / комментарий") },
+                            label = { Text("Адрес / комментарий", fontSize = 13.sp) },
                             singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.fillMaxWidth()
                         )
                         Button(
                             onClick = viewModel::confirmCreateTerritoryFromMap,
                             colors = ButtonDefaults.buttonColors(containerColor = EcoColors.Emerald600),
-                            modifier = Modifier.fillMaxWidth()
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().height(50.dp)
                         ) {
-                            Text(if (state.pendingLeafToAttach != null) "Сохранить лист в эту точку" else "Создать точку")
+                            Text(
+                                text = if (state.pendingLeafToAttach != null) "Сохранить лист в эту точку" else "Создать точку",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -397,88 +409,109 @@ fun MapScreen(
                 val rating = stats.indicativeRating
 
                 Surface(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(24.dp),
                     shadowElevation = 8.dp,
                     color = Color.White,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.Top
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(selectedTerritory.name, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = EcoColors.Slate900)
+                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                Text(selectedTerritory.name, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, color = EcoColors.Slate900)
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = "${"%.4f".format(selectedTerritory.latitude)}°, ${"%.4f".format(selectedTerritory.longitude)}° · Замеров: ${stats.sampleCount}",
-                                    fontSize = 11.sp,
+                                    fontSize = 13.sp,
                                     fontFamily = FontFamily.Monospace,
                                     color = EcoColors.Slate500
                                 )
                             }
-                            IconButton(onClick = { viewModel.selectMapTerritory(null) }) {
-                                Icon(Icons.Default.Close, contentDescription = "Закрыть")
+                            IconButton(onClick = { viewModel.selectMapTerritory(null) }, modifier = Modifier.size(36.dp)) {
+                                Icon(Icons.Default.Close, contentDescription = "Закрыть", tint = EcoColors.Slate500)
                             }
                         }
 
                         if (rating != null) {
                             Surface(
-                                color = EcoColors.scoreColor(rating.score),
-                                shape = RoundedCornerShape(10.dp),
+                                color = if (showZakharovScale) EcoColors.scoreColor(rating.score) else EcoColors.Emerald50,
+                                shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                val reliabilityTag = if (stats.isReliable) "Достоверно" else "Предв. (n < 10)"
-                                val seStr = if (stats.sampleCount >= 2) " ± ${"%.4f".format(stats.standardError)}" else ""
+                                val shownZ = if (stats.treeCount >= 2) stats.treeMeanFA else stats.meanFA
+                                val shownSE = if (stats.treeCount >= 2) stats.treeLevelSE else stats.standardError
+                                val seStr = if (stats.primaryLeafCount >= 2) " ± ${"%.4f".format(shownSE)}" else ""
+                                val msg = if (showZakharovScale) {
+                                    "Z = ${"%.4f".format(shownZ)}$seStr · Ориентир ${rating.score} (${stats.faValidationStatus})"
+                                } else {
+                                    "Z = ${"%.4f".format(shownZ)}$seStr · ${stats.treeCount} дер. / ${stats.primaryLeafCount} л. (${stats.faValidationStatus})"
+                                }
+                                val txtColor = if (showZakharovScale) EcoColors.scoreTextColor(rating.score) else EcoColors.Emerald900
                                 Text(
-                                    text = "FA = ${"%.4f".format(stats.meanFA)}$seStr · Балл ${rating.score} ($reliabilityTag)",
-                                    color = EcoColors.scoreTextColor(rating.score),
+                                    text = msg,
+                                    color = txtColor,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
                                 )
                             }
                         } else {
-                            Text("В этой точке ещё нет замеров листьев.", fontSize = 12.sp, color = EcoColors.Slate500)
+                            Text("В этой точке ещё нет замеров листьев.", fontSize = 14.sp, color = EcoColors.Slate500)
                         }
 
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Button(
                                 onClick = { viewModel.startScanForTerritory(selectedTerritory.id) },
                                 colors = ButtonDefaults.buttonColors(containerColor = EcoColors.Emerald600),
-                                modifier = Modifier.weight(1f)
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.weight(1f).height(48.dp)
                             ) {
-                                Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Сканировать", fontSize = 12.sp)
+                                Text("Сканировать", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             }
                             OutlinedButton(
                                 onClick = { viewModel.openTerritoryInJournal(selectedTerritory.id) },
-                                modifier = Modifier.weight(1f)
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.weight(1f).height(48.dp)
                             ) {
-                                Text("В журнал", fontSize = 12.sp)
+                                Text("В журнал", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
                 }
             } else {
-                // Compact Zakharov Scale Legend
+                // Readable Legend: Pure Morphometry vs Optional Zakharov Reference
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color.White.copy(alpha = 0.94f),
-                    shadowElevation = 3.dp,
+                    shape = RoundedCornerShape(18.dp),
+                    color = Color.White.copy(alpha = 0.96f),
+                    shadowElevation = 4.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        LegendPill("I <0.040", EcoColors.Score1)
-                        LegendPill("II .040-.044", EcoColors.Score2)
-                        LegendPill("III .045-.049", EcoColors.Score3)
-                        LegendPill("IV .050-.054", EcoColors.Score4)
-                        LegendPill("V >.054", EcoColors.Score5)
+                    if (showZakharovScale) {
+                        FlowRow(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            LegendPill("I <0.040", EcoColors.Score1)
+                            LegendPill("II .040–.044", EcoColors.Score2)
+                            LegendPill("III .045–.049", EcoColors.Score3)
+                            LegendPill("IV .050–.054", EcoColors.Score4)
+                            LegendPill("V >.054", EcoColors.Score5)
+                        }
+                    } else {
+                        FlowRow(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            LegendPill("Морфометрия (баллы отключены)", EcoColors.Emerald600)
+                            LegendPill("Нет замеров", EcoColors.Slate400)
+                        }
                     }
                 }
             }
@@ -488,9 +521,15 @@ fun MapScreen(
 
 @Composable
 private fun LegendPill(label: String, color: Color) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
-        Text(label, fontSize = 8.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = EcoColors.Slate700)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(color))
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            color = EcoColors.Slate700
+        )
     }
 }
 
@@ -500,7 +539,7 @@ private fun createMarkerDrawable(
     badgeText: String,
     isSelected: Boolean
 ): BitmapDrawable {
-    val sizePx = if (isSelected) 96 else 78
+    val sizePx = if (isSelected) 104 else 84
     val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     val cx = sizePx / 2f
@@ -511,7 +550,7 @@ private fun createMarkerDrawable(
         color = android.graphics.Color.WHITE
         style = Paint.Style.FILL
     }
-    canvas.drawCircle(cx, cy, radius + (if (isSelected) 8f else 5f), haloPaint)
+    canvas.drawCircle(cx, cy, radius + (if (isSelected) 9f else 6f), haloPaint)
 
     val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = fillColor

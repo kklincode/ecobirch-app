@@ -9,7 +9,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
@@ -38,6 +41,7 @@ import ru.ecobirch.fa.app.ui.theme.EcoColors
 fun EcoPassportDialog(
     territory: Territory,
     leaf: LeafAnalysis,
+    showZakharovScale: Boolean,
     onShare: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -46,30 +50,37 @@ fun EcoPassportDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = Color.White,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(22.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Text(
-                    text = "Эко-паспорт листа",
+                    text = "Морфометрический паспорт листа",
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     color = EcoColors.Slate900
                 )
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = territory.name,
-                    fontSize = 12.sp,
+                    text = "${territory.name} · ${leaf.treeLabel}",
+                    fontSize = 13.5.sp,
                     color = EcoColors.Slate500
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(EcoColors.scoreColor(rating.score))
-                        .padding(14.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(
+                            if (showZakharovScale) EcoColors.scoreColor(rating.score) else EcoColors.Emerald50
+                        )
+                        .padding(16.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -77,86 +88,136 @@ fun EcoPassportDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
+                            val titleTxt = if (showZakharovScale) {
+                                "ОРИЕНТИР ${rating.score} · ${rating.status}"
+                            } else {
+                                "ИНДЕКС АСИММЕТРИИ Z"
+                            }
+                            val subTxt = if (showZakharovScale) {
+                                "Шкала Захарова: ${rating.rangeLabel} (1 лист не интерпретируется)"
+                            } else {
+                                "Чистая морфометрия (без оценки среды)"
+                            }
+                            val txtColor = if (showZakharovScale) {
+                                EcoColors.scoreTextColor(rating.score)
+                            } else {
+                                EcoColors.Emerald900
+                            }
                             Text(
-                                text = "БАЛЛ ${rating.score} · ${rating.status}",
+                                text = titleTxt,
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 13.sp,
-                                color = EcoColors.scoreTextColor(rating.score)
+                                fontSize = 14.sp,
+                                color = txtColor
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Шкала Захарова: ${rating.rangeLabel}",
-                                fontSize = 11.sp,
-                                color = EcoColors.scoreTextColor(rating.score).copy(alpha = 0.88f)
+                                text = subTxt,
+                                fontSize = 12.5.sp,
+                                color = txtColor.copy(alpha = 0.88f)
                             )
                         }
                         Text(
-                            text = "Z = ${"%.4f".format(leaf.zScore)}",
+                            text = "%.4f".format(leaf.zScore),
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Black,
-                            fontSize = 16.sp,
-                            color = EcoColors.scoreTextColor(rating.score)
+                            fontSize = 22.sp,
+                            color = if (showZakharovScale) EcoColors.scoreTextColor(rating.score) else EcoColors.Emerald900
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-                Text("Морфометрия (Y1–Y5):", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = EcoColors.Slate700)
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = EcoColors.SurfaceTonal,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val modeText = buildString {
+                        append(if (leaf.isBlindMeasurement) "Слепой замер" else "Открытый замер")
+                        if (!leaf.replicateOfLeafId.isNullOrBlank()) append(" · Повтор (ME)")
+                        append(if (leaf.leafIntegrityVerified) " · B. pendula OK" else " · Не проверен")
+                    }
+                    Text(
+                        text = modeText,
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = EcoColors.Slate700,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Морфометрия (Y1–Y5)",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = EcoColors.Slate900
+                )
+                Spacer(modifier = Modifier.height(8.dp))
 
                 val rows = listOf(
-                    Triple("Y1 Ширина половинок", "${"%.1f".format(leaf.traits.t1Width.xLeft)} / ${"%.1f".format(leaf.traits.t1Width.xRight)} $unit", leaf.traits.t1Width.yDiff),
-                    Triple("Y2 Длина 2-й жилки", "${"%.1f".format(leaf.traits.t2VeinLen.xLeft)} / ${"%.1f".format(leaf.traits.t2VeinLen.xRight)} $unit", leaf.traits.t2VeinLen.yDiff),
-                    Triple("Y3 Осн. 1–2 жилок", "${"%.1f".format(leaf.traits.t3VeinDist.xLeft)} / ${"%.1f".format(leaf.traits.t3VeinDist.xRight)} $unit", leaf.traits.t3VeinDist.yDiff),
-                    Triple("Y4 Края 1–2 жилок", "${"%.1f".format(leaf.traits.t4EndDist.xLeft)} / ${"%.1f".format(leaf.traits.t4EndDist.xRight)} $unit", leaf.traits.t4EndDist.yDiff),
-                    Triple("Y5 Угол 2-й жилки", "${"%.1f".format(leaf.traits.t5Angle.xLeft)}° / ${"%.1f".format(leaf.traits.t5Angle.xRight)}°", leaf.traits.t5Angle.yDiff)
+                    Triple("Y1 · Ширина половинок", "${"%.1f".format(leaf.traits.t1Width.xLeft)} / ${"%.1f".format(leaf.traits.t1Width.xRight)} $unit", leaf.traits.t1Width.yDiff),
+                    Triple("Y2 · Длина 2-й жилки", "${"%.1f".format(leaf.traits.t2VeinLen.xLeft)} / ${"%.1f".format(leaf.traits.t2VeinLen.xRight)} $unit", leaf.traits.t2VeinLen.yDiff),
+                    Triple("Y3 · Осн. 1–2 жилок", "${"%.1f".format(leaf.traits.t3VeinDist.xLeft)} / ${"%.1f".format(leaf.traits.t3VeinDist.xRight)} $unit", leaf.traits.t3VeinDist.yDiff),
+                    Triple("Y4 · Края 1–2 жилок", "${"%.1f".format(leaf.traits.t4EndDist.xLeft)} / ${"%.1f".format(leaf.traits.t4EndDist.xRight)} $unit", leaf.traits.t4EndDist.yDiff),
+                    Triple("Y5 · Угол 2-й жилки", "${"%.1f".format(leaf.traits.t5Angle.xLeft)}° / ${"%.1f".format(leaf.traits.t5Angle.xRight)}°", leaf.traits.t5Angle.yDiff)
                 )
 
                 rows.forEachIndexed { idx, (label, dims, y) ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                            .padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = EcoColors.Slate900)
-                            Text("Л/П: $dims", fontSize = 10.sp, color = EcoColors.Slate500)
+                            Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = EcoColors.Slate900)
+                            Text("Л/П: $dims", fontSize = 12.5.sp, color = EcoColors.Slate500)
                         }
                         Text(
                             text = "%.4f".format(y),
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
+                            fontSize = 15.sp,
                             color = EcoColors.Slate900
                         )
                     }
                     if (idx < rows.lastIndex) HorizontalDivider(color = EcoColors.Slate100)
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "Координаты: ${"%.5f".format(territory.latitude)}, ${"%.5f".format(territory.longitude)}",
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace,
-                    color = EcoColors.Slate500
-                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = EcoColors.SurfaceTonal,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Координаты: ${"%.5f".format(territory.latitude)}, ${"%.5f".format(territory.longitude)}",
+                        fontSize = 12.5.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = EcoColors.Slate700,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp)
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Spacer(modifier = Modifier.height(18.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f).height(48.dp)
                     ) {
-                        Text("Закрыть")
+                        Text("Закрыть", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
                     Button(
                         onClick = onShare,
                         colors = ButtonDefaults.buttonColors(containerColor = EcoColors.Emerald600),
-                        modifier = Modifier.weight(1.2f)
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1.25f).height(48.dp)
                     ) {
-                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
-                        Text("Поделиться")
+                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp).padding(end = 4.dp))
+                        Text("Поделиться", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

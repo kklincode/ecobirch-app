@@ -77,10 +77,10 @@ import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 /**
- * Interactive morphological calibration canvas addressing audit precision issues:
- * - Pinch-to-zoom (1x..5x) + two-finger pan + quick zoom buttons
+ * Interactive morphological calibration canvas:
+ * - Pinch-to-zoom (1x..5x) + two-finger pan + spacious zoom buttons
  * - Generous touch target matching closest landmark without jumping
- * - Live 2.5x Circular Magnifying Loupe rendered in corner opposite the dragged landmark
+ * - Live 2.6x Circular Magnifying Loupe rendered opposite the dragged landmark
  * - Precision chip bar & 4-way micro-nudge buttons (0.3% step)
  */
 @Composable
@@ -104,111 +104,153 @@ fun LeafCalibrationCanvas(
     val density = LocalDensity.current
 
     Column(modifier = modifier.fillMaxWidth()) {
-        // Zoom & precision bar
-        Row(
+        // Dark Studio Zoom Bar + Calibration Viewport
+        Surface(
+            color = EcoColors.Slate950,
+            shape = RoundedCornerShape(24.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .background(EcoColors.Slate900)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 16.dp)
         ) {
-            Text(
-                text = "Зум: ${"%.1f".format(viewZoom)}× · Активна: ${activeLandmark.shortTitle}",
-                color = EcoColors.Emerald100,
-                fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = {
-                        viewZoom = (viewZoom - 0.5f).coerceAtLeast(1f)
-                        if (viewZoom == 1f) viewPan = Offset.Zero
-                    },
-                    modifier = Modifier.size(30.dp)
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(Icons.Default.ZoomOut, contentDescription = "Уменьшить", tint = Color.White, modifier = Modifier.size(18.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            color = EcoColors.Emerald900,
+                            shape = RoundedCornerShape(99.dp)
+                        ) {
+                            Text(
+                                text = "${"%.1f".format(viewZoom)}×",
+                                color = EcoColors.Emerald100,
+                                fontSize = 12.5.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                        Text(
+                            text = activeLandmark.shortTitle,
+                            color = Color.White,
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = {
+                                viewZoom = (viewZoom - 0.5f).coerceAtLeast(1f)
+                                if (viewZoom == 1f) viewPan = Offset.Zero
+                            },
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Icon(Icons.Default.ZoomOut, contentDescription = "Уменьшить", tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                        IconButton(
+                            onClick = { viewZoom = (viewZoom + 0.5f).coerceAtMost(5f) },
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Icon(Icons.Default.ZoomIn, contentDescription = "Приблизить", tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                        IconButton(
+                            onClick = {
+                                viewZoom = 1f
+                                viewPan = Offset.Zero
+                            },
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Icon(Icons.Default.CenterFocusStrong, contentDescription = "Сброс вида", tint = EcoColors.Emerald100, modifier = Modifier.size(20.dp))
+                        }
+                    }
                 }
-                IconButton(
-                    onClick = { viewZoom = (viewZoom + 0.5f).coerceAtMost(5f) },
-                    modifier = Modifier.size(30.dp)
-                ) {
-                    Icon(Icons.Default.ZoomIn, contentDescription = "Приблизить", tint = Color.White, modifier = Modifier.size(18.dp))
-                }
-                IconButton(
-                    onClick = {
-                        viewZoom = 1f
-                        viewPan = Offset.Zero
-                    },
-                    modifier = Modifier.size(30.dp)
-                ) {
-                    Icon(Icons.Default.CenterFocusStrong, contentDescription = "Сброс вида", tint = EcoColors.Emerald100, modifier = Modifier.size(18.dp))
-                }
-            }
-        }
 
-        // Main Interactive Calibration Viewport
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(EcoColors.Slate950)
-                .padding(8.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            val hitRadiusPx = with(density) { 34.dp.toPx() }
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(clampedAspect)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF07110C))
-                    .border(1.dp, EcoColors.Slate700, RoundedCornerShape(16.dp))
-                    .clipToBounds()
-                    .pointerInput(points, viewZoom, viewPan) {
-                        awaitEachGesture {
-                            val firstDown = awaitFirstDown(requireUnconsumed = false)
-                            val w = size.width.toFloat()
-                            val h = size.height.toFloat()
-                            val center = Offset(w / 2f, h / 2f)
+                val hitRadiusPx = with(density) { 36.dp.toPx() }
 
-                            fun screenToPercent(screenPos: Offset): LeafPoint {
-                                val unpanned = (screenPos - center - viewPan) / viewZoom + center
-                                return LeafPoint(
-                                    x = ((unpanned.x / w) * 100f).coerceIn(1f, 99f),
-                                    y = ((unpanned.y / h) * 100f).coerceIn(1f, 99f)
-                                )
-                            }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(clampedAspect)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color(0xFF050E0A))
+                        .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(18.dp))
+                        .clipToBounds()
+                        .pointerInput(points, viewZoom, viewPan) {
+                            awaitEachGesture {
+                                val firstDown = awaitFirstDown(requireUnconsumed = false)
+                                val w = size.width.toFloat()
+                                val h = size.height.toFloat()
+                                val center = Offset(w / 2f, h / 2f)
 
-                            fun percentToScreen(pt: LeafPoint): Offset {
-                                val base = Offset(pt.x / 100f * w, pt.y / 100f * h)
-                                return (base - center) * viewZoom + center + viewPan
-                            }
-
-                            // Find nearest landmark within touch hit radius
-                            var bestKey: LandmarkKey? = null
-                            var bestDist = Float.MAX_VALUE
-                            for (key in LandmarkKey.entries) {
-                                val pScreen = percentToScreen(points[key])
-                                val dist = hypot(pScreen.x - firstDown.position.x, pScreen.y - firstDown.position.y)
-                                if (dist <= hitRadiusPx && dist < bestDist) {
-                                    bestDist = dist
-                                    bestKey = key
+                                fun screenToPercent(screenPos: Offset): LeafPoint {
+                                    val unpanned = (screenPos - center - viewPan) / viewZoom + center
+                                    return LeafPoint(
+                                        x = ((unpanned.x / w) * 100f).coerceIn(1f, 99f),
+                                        y = ((unpanned.y / h) * 100f).coerceIn(1f, 99f)
+                                    )
                                 }
-                            }
 
-                            if (bestKey != null) {
-                                draggingKey = bestKey
-                                onSelectLandmark(bestKey)
-                                firstDown.consume()
-                                while (true) {
-                                    val event = awaitPointerEvent()
-                                    val activePointers = event.changes.filter { it.pressed }
-                                    if (activePointers.isEmpty()) break
-                                    if (activePointers.size >= 2) {
-                                        // Allow pinch-zoom anytime even if a finger started on a point
-                                        draggingKey = null
+                                fun percentToScreen(pt: LeafPoint): Offset {
+                                    val base = Offset(pt.x / 100f * w, pt.y / 100f * h)
+                                    return (base - center) * viewZoom + center + viewPan
+                                }
+
+                                var bestKey: LandmarkKey? = null
+                                var bestDist = Float.MAX_VALUE
+                                for (key in LandmarkKey.entries) {
+                                    val pScreen = percentToScreen(points[key])
+                                    val dist = hypot(pScreen.x - firstDown.position.x, pScreen.y - firstDown.position.y)
+                                    if (dist <= hitRadiusPx && dist < bestDist) {
+                                        bestDist = dist
+                                        bestKey = key
+                                    }
+                                }
+
+                                if (bestKey != null) {
+                                    draggingKey = bestKey
+                                    onSelectLandmark(bestKey)
+                                    firstDown.consume()
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        val activePointers = event.changes.filter { it.pressed }
+                                        if (activePointers.isEmpty()) break
+                                        if (activePointers.size >= 2) {
+                                            draggingKey = null
+                                            val zoomDelta = event.calculateZoom()
+                                            val panDelta = event.calculatePan()
+                                            val newZoom = (viewZoom * zoomDelta).coerceIn(1f, 5f)
+                                            viewZoom = newZoom
+                                            val maxPanX = (w * (newZoom - 1f)) / 2f
+                                            val maxPanY = (h * (newZoom - 1f)) / 2f
+                                            viewPan = if (newZoom <= 1.01f) Offset.Zero else Offset(
+                                                (viewPan.x + panDelta.x).coerceIn(-maxPanX, maxPanX),
+                                                (viewPan.y + panDelta.y).coerceIn(-maxPanY, maxPanY)
+                                            )
+                                            event.changes.forEach { it.consume() }
+                                        } else {
+                                            val ch = activePointers.first()
+                                            if (ch.positionChanged()) {
+                                                onMoveLandmark(bestKey, screenToPercent(ch.position))
+                                                ch.consume()
+                                            }
+                                        }
+                                    }
+                                    draggingKey = null
+                                } else {
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        val activePointers = event.changes.filter { it.pressed }
+                                        if (activePointers.isEmpty()) break
                                         val zoomDelta = event.calculateZoom()
                                         val panDelta = event.calculatePan()
                                         val newZoom = (viewZoom * zoomDelta).coerceIn(1f, 5f)
@@ -219,174 +261,154 @@ fun LeafCalibrationCanvas(
                                             (viewPan.x + panDelta.x).coerceIn(-maxPanX, maxPanX),
                                             (viewPan.y + panDelta.y).coerceIn(-maxPanY, maxPanY)
                                         )
-                                        event.changes.forEach { it.consume() }
-                                    } else {
-                                        val ch = activePointers.first()
-                                        if (ch.positionChanged()) {
-                                            onMoveLandmark(bestKey, screenToPercent(ch.position))
-                                            ch.consume()
+                                        if (activePointers.size >= 2 || viewZoom > 1.01f) {
+                                            event.changes.forEach { it.consume() }
                                         }
-                                    }
-                                }
-                                draggingKey = null
-                            } else {
-                                // Pan / Pinch zoom background
-                                while (true) {
-                                    val event = awaitPointerEvent()
-                                    val activePointers = event.changes.filter { it.pressed }
-                                    if (activePointers.isEmpty()) break
-                                    val zoomDelta = event.calculateZoom()
-                                    val panDelta = event.calculatePan()
-                                    val newZoom = (viewZoom * zoomDelta).coerceIn(1f, 5f)
-                                    viewZoom = newZoom
-                                    val maxPanX = (w * (newZoom - 1f)) / 2f
-                                    val maxPanY = (h * (newZoom - 1f)) / 2f
-                                    viewPan = if (newZoom <= 1.01f) Offset.Zero else Offset(
-                                        (viewPan.x + panDelta.x).coerceIn(-maxPanX, maxPanX),
-                                        (viewPan.y + panDelta.y).coerceIn(-maxPanY, maxPanY)
-                                    )
-                                    if (activePointers.size >= 2 || viewZoom > 1.01f) {
-                                        event.changes.forEach { it.consume() }
                                     }
                                 }
                             }
                         }
-                    }
-            ) {
-                // Transformed image + vector overlay
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            scaleX = viewZoom
-                            scaleY = viewZoom
-                            translationX = viewPan.x
-                            translationY = viewPan.y
-                        }
                 ) {
-                    val w = size.width
-                    val h = size.height
-
-                    if (imageBitmap != null && !isTemplate) {
-                        drawImage(
-                            image = imageBitmap,
-                            dstOffset = IntOffset.Zero,
-                            dstSize = IntSize(w.roundToInt(), h.roundToInt())
-                        )
-                    } else {
-                        drawTemplateLeafSilhouette(w, h)
-                    }
-
-                    drawMorphometryVectors(
-                        points = points,
-                        aspectRatio = clampedAspect,
-                        w = w,
-                        h = h,
-                        strokeScale = 1f / viewZoom
-                    )
-                    drawLandmarks(
-                        points = points,
-                        activeKey = activeLandmark,
-                        w = w,
-                        h = h,
-                        invZoom = 1f / viewZoom
-                    )
-                }
-
-                // Live 2.5x Precision Magnifying Loupe while dragging any landmark
-                val activeDrag = draggingKey
-                if (activeDrag != null) {
-                    val targetPt = points[activeDrag]
-                    val loupeAlignment = if (targetPt.x < 50f && targetPt.y < 50f) {
-                        Alignment.TopEnd
-                    } else {
-                        Alignment.TopStart
-                    }
-                    MagnifyingLoupe(
-                        targetPt = targetPt,
-                        imageBitmap = if (!isTemplate) imageBitmap else null,
-                        points = points,
-                        aspectRatio = clampedAspect,
-                        activeKey = activeDrag,
+                    Canvas(
                         modifier = Modifier
-                            .align(loupeAlignment)
-                            .padding(10.dp)
-                    )
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = viewZoom
+                                scaleY = viewZoom
+                                translationX = viewPan.x
+                                translationY = viewPan.y
+                            }
+                    ) {
+                        val w = size.width
+                        val h = size.height
+
+                        if (imageBitmap != null && !isTemplate) {
+                            drawImage(
+                                image = imageBitmap,
+                                dstOffset = IntOffset.Zero,
+                                dstSize = IntSize(w.roundToInt(), h.roundToInt())
+                            )
+                        } else {
+                            drawTemplateLeafSilhouette(w, h)
+                        }
+
+                        drawMorphometryVectors(
+                            points = points,
+                            aspectRatio = clampedAspect,
+                            w = w,
+                            h = h,
+                            strokeScale = 1f / viewZoom
+                        )
+                        drawLandmarks(
+                            points = points,
+                            activeKey = activeLandmark,
+                            w = w,
+                            h = h,
+                            invZoom = 1f / viewZoom
+                        )
+                    }
+
+                    val activeDrag = draggingKey
+                    if (activeDrag != null) {
+                        val targetPt = points[activeDrag]
+                        val loupeAlignment = if (targetPt.x < 50f && targetPt.y < 50f) {
+                            Alignment.TopEnd
+                        } else {
+                            Alignment.TopStart
+                        }
+                        MagnifyingLoupe(
+                            targetPt = targetPt,
+                            imageBitmap = if (!isTemplate) imageBitmap else null,
+                            points = points,
+                            aspectRatio = clampedAspect,
+                            activeKey = activeDrag,
+                            modifier = Modifier
+                                .align(loupeAlignment)
+                                .padding(10.dp)
+                        )
+                    }
                 }
             }
         }
 
-        // Quick Landmark Selector Chips + 4-way Micro-Nudge Bar
-        Column(
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Quick Landmark Selector Chips + 4-way Micro-Nudge Card
+        Surface(
+            color = Color.White,
+            shape = RoundedCornerShape(22.dp),
+            shadowElevation = 1.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White)
-                .padding(vertical = 8.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                items(LandmarkKey.entries) { key ->
-                    val selected = key == activeLandmark
-                    val dotColor = landmarkColor(key)
-                    FilterChip(
-                        selected = selected,
-                        onClick = { onSelectLandmark(key) },
-                        label = {
-                            Text(
-                                text = key.shortTitle,
-                                fontSize = 11.sp,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+            Column(modifier = Modifier.padding(vertical = 12.dp)) {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(LandmarkKey.entries) { key ->
+                        val selected = key == activeLandmark
+                        val dotColor = landmarkColor(key)
+                        FilterChip(
+                            selected = selected,
+                            onClick = { onSelectLandmark(key) },
+                            shape = RoundedCornerShape(99.dp),
+                            label = {
+                                Text(
+                                    text = key.shortTitle,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                                )
+                            },
+                            leadingIcon = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(9.dp)
+                                        .clip(CircleShape)
+                                        .background(dotColor)
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = EcoColors.Emerald100,
+                                selectedLabelColor = EcoColors.Emerald900
                             )
-                        },
-                        leadingIcon = {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(dotColor)
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = EcoColors.Emerald50,
-                            selectedLabelColor = EcoColors.Emerald900
                         )
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Micro-nudge D-pad bar for sub-pixel positioning
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                val curPt = points[activeLandmark]
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = activeLandmark.fullTitle,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = EcoColors.Slate900
-                    )
-                    Text(
-                        text = "X: ${"%.1f".format(curPt.x)}% · Y: ${"%.1f".format(curPt.y)}% (шаг 0.3%)",
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace,
-                        color = EcoColors.Slate500
-                    )
+                    }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    NudgeButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Влево") { onNudgeActive(-0.3f, 0f) }
-                    NudgeButton(Icons.Default.KeyboardArrowUp, "Вверх") { onNudgeActive(0f, -0.3f) }
-                    NudgeButton(Icons.Default.KeyboardArrowDown, "Вниз") { onNudgeActive(0f, 0.3f) }
-                    NudgeButton(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Вправо") { onNudgeActive(0.3f, 0f) }
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    val curPt = points[activeLandmark]
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(
+                            text = activeLandmark.fullTitle,
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = EcoColors.Slate900
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "X ${"%.1f".format(curPt.x)}% · Y ${"%.1f".format(curPt.y)}%  (шаг 0.3%)",
+                            fontSize = 12.5.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = EcoColors.Slate500
+                        )
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        NudgeButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Влево") { onNudgeActive(-0.3f, 0f) }
+                        NudgeButton(Icons.Default.KeyboardArrowUp, "Вверх") { onNudgeActive(0f, -0.3f) }
+                        NudgeButton(Icons.Default.KeyboardArrowDown, "Вниз") { onNudgeActive(0f, 0.3f) }
+                        NudgeButton(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Вправо") { onNudgeActive(0.3f, 0f) }
+                    }
                 }
             }
         }
@@ -401,13 +423,12 @@ private fun NudgeButton(
 ) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        color = EcoColors.Slate100,
-        border = androidx.compose.foundation.BorderStroke(1.dp, EcoColors.Slate200),
-        modifier = Modifier.size(34.dp)
+        shape = RoundedCornerShape(12.dp),
+        color = EcoColors.SurfaceTonal,
+        modifier = Modifier.size(40.dp)
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = cd, tint = EcoColors.Slate900, modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription = cd, tint = EcoColors.Slate900, modifier = Modifier.size(22.dp))
         }
     }
 }
@@ -427,17 +448,16 @@ private fun MagnifyingLoupe(
     ) {
         Box(
             modifier = Modifier
-                .size(112.dp)
+                .size(124.dp)
                 .clip(CircleShape)
                 .background(Color(0xFF06150E))
-                .border(2.5.dp, EcoColors.Emerald100, CircleShape)
+                .border(3.dp, EcoColors.Emerald100, CircleShape)
                 .clipToBounds()
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val loupeZoom = 2.6f
                 val cx = size.width / 2f
                 val cy = size.height / 2f
-                // Render virtual canvas centered on targetPt
                 val virtW = size.width * 2.5f
                 val virtH = size.height * 2.5f
                 val targetX = (targetPt.x / 100f) * virtW
@@ -460,32 +480,32 @@ private fun MagnifyingLoupe(
                 drawLandmarks(points, activeKey, virtW, virtH, invZoom = 0.55f)
                 drawContext.canvas.restore()
 
-                // Precision crosshair in the center of the loupe
                 drawLine(
                     color = Color.White.copy(alpha = 0.85f),
-                    start = Offset(cx - 18f, cy),
-                    end = Offset(cx + 18f, cy),
-                    strokeWidth = 1.6f
+                    start = Offset(cx - 20f, cy),
+                    end = Offset(cx + 20f, cy),
+                    strokeWidth = 1.8f
                 )
                 drawLine(
                     color = Color.White.copy(alpha = 0.85f),
-                    start = Offset(cx, cy - 18f),
-                    end = Offset(cx, cy + 18f),
-                    strokeWidth = 1.6f
+                    start = Offset(cx, cy - 20f),
+                    end = Offset(cx, cy + 20f),
+                    strokeWidth = 1.8f
                 )
             }
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Surface(
-            color = EcoColors.Slate950.copy(alpha = 0.88f),
-            shape = RoundedCornerShape(6.dp)
+            color = EcoColors.Slate950.copy(alpha = 0.90f),
+            shape = RoundedCornerShape(99.dp)
         ) {
             Text(
-                text = "${activeKey.shortTitle} (${"%.1f".format(targetPt.x)}, ${"%.1f".format(targetPt.y)})",
+                text = "${activeKey.shortTitle} · ${"%.1f".format(targetPt.x)}, ${"%.1f".format(targetPt.y)}",
                 color = Color.White,
-                fontSize = 10.sp,
+                fontSize = 11.5.sp,
                 fontFamily = FontFamily.Monospace,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
             )
         }
     }
@@ -521,7 +541,6 @@ private fun DrawScope.drawMorphometryVectors(
     val dash = PathEffect.dashPathEffect(floatArrayOf(8f * strokeScale, 5f * strokeScale), 0f)
     val dot = PathEffect.dashPathEffect(floatArrayOf(3f * strokeScale, 4f * strokeScale), 0f)
 
-    // Central midrib axis
     drawLine(
         color = Color(0xFFEF4444),
         start = px(points.base),
@@ -530,21 +549,18 @@ private fun DrawScope.drawMorphometryVectors(
         pathEffect = dash
     )
 
-    // Lateral veins 1 & 2 (left and right)
     val veinColor = Color(0xFF4ADE80)
     drawLine(veinColor, px(points.leftVein1Base), px(points.leftVein1End), strokeWidth = 2.6f * strokeScale)
     drawLine(veinColor, px(points.leftVein2Base), px(points.leftVein2End), strokeWidth = 2.6f * strokeScale)
     drawLine(veinColor, px(points.rightVein1Base), px(points.rightVein1End), strokeWidth = 2.6f * strokeScale)
     drawLine(veinColor, px(points.rightVein2Base), px(points.rightVein2End), strokeWidth = 2.6f * strokeScale)
 
-    // Orthogonal width perpendiculars onto central axis (Trait 1)
     val leftFoot = LeafBioindicationEngine.projectPointOntoLine(points.leftWidthMax, points.base, points.tip, aspectRatio)
     val rightFoot = LeafBioindicationEngine.projectPointOntoLine(points.rightWidthMax, points.base, points.tip, aspectRatio)
     val widthColor = Color(0xFFFBBF24)
     drawLine(widthColor, px(leftFoot), px(points.leftWidthMax), strokeWidth = 2.2f * strokeScale, pathEffect = dash)
     drawLine(widthColor, px(rightFoot), px(points.rightWidthMax), strokeWidth = 2.2f * strokeScale, pathEffect = dash)
 
-    // Trait 4 marginal distances
     val endColor = Color(0xFF38BDF8)
     drawLine(endColor, px(points.leftVein1End), px(points.leftVein2End), strokeWidth = 2f * strokeScale, pathEffect = dot)
     drawLine(endColor, px(points.rightVein1End), px(points.rightVein2End), strokeWidth = 2f * strokeScale, pathEffect = dot)
@@ -563,11 +579,11 @@ private fun DrawScope.drawLandmarks(
         val isActive = key == activeKey
         val color = landmarkColor(key)
 
-        val haloRadius = (if (isActive) 18f else 12f) * invZoom
-        val dotRadius = (if (isActive) 9f else 6.5f) * invZoom
+        val haloRadius = (if (isActive) 20f else 13f) * invZoom
+        val dotRadius = (if (isActive) 10f else 7f) * invZoom
 
         drawCircle(
-            color = color.copy(alpha = if (isActive) 0.40f else 0.24f),
+            color = color.copy(alpha = if (isActive) 0.42f else 0.24f),
             radius = haloRadius,
             center = center
         )
@@ -580,7 +596,7 @@ private fun DrawScope.drawLandmarks(
             color = Color.White,
             radius = dotRadius,
             center = center,
-            style = Stroke(width = (if (isActive) 2.5f else 1.5f) * invZoom)
+            style = Stroke(width = (if (isActive) 2.6f else 1.6f) * invZoom)
         )
     }
 }

@@ -9,7 +9,9 @@ data class AppSettings(
     val privacyPolicyAccepted: Boolean = false,
     val useCloudGeminiAi: Boolean = false,
     val geminiApiKey: String = "",
-    val includeDemoInExport: Boolean = false
+    val includeDemoInExport: Boolean = false,
+    val blindMeasurementMode: Boolean = false,
+    val enableZakharovScale: Boolean = false
 )
 
 class SettingsRepository(context: Context) {
@@ -23,7 +25,9 @@ class SettingsRepository(context: Context) {
         privacyPolicyAccepted = prefs.getBoolean(KEY_PRIVACY_ACCEPTED, false),
         useCloudGeminiAi = prefs.getBoolean(KEY_USE_GEMINI, false),
         geminiApiKey = prefs.getString(KEY_GEMINI_API_KEY, "") ?: "",
-        includeDemoInExport = prefs.getBoolean(KEY_INCLUDE_DEMO_EXPORT, false)
+        includeDemoInExport = prefs.getBoolean(KEY_INCLUDE_DEMO_EXPORT, false),
+        blindMeasurementMode = prefs.getBoolean(KEY_BLIND_MODE, false),
+        enableZakharovScale = prefs.getBoolean(KEY_ENABLE_ZAKHAROV, false)
     )
 
     fun setPrivacyPolicyAccepted(accepted: Boolean) {
@@ -44,10 +48,22 @@ class SettingsRepository(context: Context) {
         _settings.value = load()
     }
 
+    fun setBlindMeasurementMode(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_BLIND_MODE, enabled).apply()
+        _settings.value = load()
+    }
+
+    fun setEnableZakharovScale(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_ENABLE_ZAKHAROV, enabled).apply()
+        _settings.value = load()
+    }
+
     companion object {
         private const val KEY_PRIVACY_ACCEPTED = "privacy_policy_accepted"
         private const val KEY_USE_GEMINI = "use_cloud_gemini_ai"
         private const val KEY_GEMINI_API_KEY = "gemini_api_key"
         private const val KEY_INCLUDE_DEMO_EXPORT = "include_demo_export"
+        private const val KEY_BLIND_MODE = "blind_measurement_mode"
+        private const val KEY_ENABLE_ZAKHAROV = "enable_zakharov_scale"
     }
 }

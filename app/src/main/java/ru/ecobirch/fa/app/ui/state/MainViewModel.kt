@@ -67,7 +67,12 @@ data class ScanUiState(
     val savedLeaf: LeafAnalysis? = null,
     val savedTerritoryName: String = "",
     val showLocationChooserDialog: Boolean = false,
-    val pendingLeafForSave: LeafAnalysis? = null
+    val pendingLeafForSave: LeafAnalysis? = null,
+    val treeId: String = "tree_1",
+    val treeLabel: String = "Дерево №1",
+    val replicateOfLeafId: String? = null,
+    val forceBlindMode: Boolean = false,
+    val leafIntegrityVerified: Boolean = true
 )
 
 data class MapUiState(
@@ -143,13 +148,72 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startScanForTerritory(territoryId: String) {
+        val existingTrees = territories.value.find { it.id == territoryId }
+            ?.leaves?.filter { it.replicateOfLeafId == null }
+            ?.map { it.treeId to it.treeLabel }
+            ?.distinct()
+            .orEmpty()
+        val lastTree = existingTrees.lastOrNull()
         _scanState.update {
             it.copy(
                 stage = ScanStage.SELECT,
-                targetTerritoryId = territoryId
+                targetTerritoryId = territoryId,
+                treeId = lastTree?.first ?: "tree_1",
+                treeLabel = lastTree?.second ?: "Дерево №1",
+                replicateOfLeafId = null,
+                forceBlindMode = false
             )
         }
         _activeTabRoute.value = "scan"
+    }
+
+    fun startBlindReplicateMeasurement(territoryId: String, originalLeaf: LeafAnalysis) {
+        viewModelScope.launch {
+            _activeTabRoute.value = "scan"
+            val loadedBmp = if (
+                originalLeaf.photoUrl.isNotBlank() &&
+                originalLeaf.photoUrl != "template" &&
+                originalLeaf.photoUrl != "stored_locally" &&
+                originalLeaf.photoUrl != "stored_offline"
+            ) {
+                photoManager.loadBitmapFromPath(originalLeaf.photoUrl, 1280)
+            } else {
+                null
+            }
+
+            // Re-run detector or neutral default points so prior placement does not bias the blind repeat
+            val initialDetection = if (loadedBmp != null) {
+                withContext(Dispatchers.Default) {
+                    LeafLandmarkDetector.detectLandmarks(loadedBmp)
+                }
+            } else {
+                null
+            }
+
+            _scanState.update {
+                it.copy(
+                    stage = ScanStage.ADJUST,
+                    photoPath = originalLeaf.photoUrl,
+                    photoName = "${originalLeaf.photoName} · Повтор",
+                    photoBitmap = loadedBmp,
+                    isTemplate = originalLeaf.isTemplate,
+                    aspectRatio = originalLeaf.aspectRatio,
+                    points = initialDetection?.points ?: LeafBioindicationEngine.getDefaultLeafPoints(),
+                    activeLandmark = LandmarkKey.BASE,
+                    axisReferenceLengthMm = originalLeaf.axisReferenceLengthMm,
+                    detectionSource = initialDetection?.source ?: DetectionSource.MANUAL_DEFAULT,
+                    statusMessage = "Слепой повторный замер для оценки ошибки измерения (ME).",
+                    exifLatitude = originalLeaf.exifLatitude,
+                    exifLongitude = originalLeaf.exifLongitude,
+                    targetTerritoryId = territoryId,
+                    treeId = originalLeaf.treeId,
+                    treeLabel = originalLeaf.treeLabel,
+                    replicateOfLeafId = originalLeaf.id,
+                    forceBlindMode = true,
+                    leafIntegrityVerified = originalLeaf.leafIntegrityVerified
+                )
+            }
+        }
     }
 
     fun openTerritoryInJournal(territoryId: String) {
@@ -167,9 +231,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectTemplate(type: String) {
         val (pts, name) = when (type) {
-            "healthy" -> SampleTerritoriesFactory.healthyTemplatePoints to "Шаблон: Чистый лесопарк (БС-1)"
-            "moderate" -> SampleTerritoriesFactory.moderateTemplatePoints to "Шаблон: Городской сквер (ГС-1)"
-            else -> SampleTerritoriesFactory.stressedTemplatePoints to "Шаблон: Автомагистраль (ПР-1)"
+            "healthy" -> SampleTerritoriesFactory.healthyTemplatePoints to "Эталон: Низкая асимметрия (БС-1)"
+            "moderate" -> SampleTerritoriesFactory.moderateTemplatePoints to "Эталон: Умеренная асимметрия (ГС-1)"
+            else -> SampleTerritoriesFactory.stressedTemplatePoints to "Эталон: Высокая асимметрия (ПР-1)"
         }
         _scanState.update {
             it.copy(
@@ -185,7 +249,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 detectionSource = DetectionSource.TEMPLATE,
                 statusMessage = "Учебный векторный шаблон для тренировки калибровки.",
                 exifLatitude = null,
-                exifLongitude = null
+                exifLongitude = null,
+                replicateOfLeafId = null,
+                forceBlindMode = false
             )
         }
     }
@@ -241,10 +307,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     detectionSource = detection.source,
                     statusMessage = detection.statusMessage,
                     exifLatitude = loaded.exifLatitude,
-                    exifLongitude = loaded.exifLongitude
+                    exifLongitude = loaded.exifLongitude,
+                    replicateOfLeafId = null,
+                    forceBlindMode = false
                 )
             }
         }
+    }
+
+    fun setScanTree(treeId: String, treeLabel: String) {
+        _scanState.update { it.copy(treeId = treeId, treeLabel = treeLabel) }
+    }
+
+    fun addNextScanTree() {
+        val st = _scanState.value
+        val existingIds = st.targetTerritoryId
+            ?.let { id -> territories.value.find { it.id == id } }
+            ?.leaves
+            ?.map { it.treeId }
+            .orEmpty()
+            .toMutableSet()
+        existingIds.add(st.treeId)
+        var nextNum = 1
+        while ("tree_$nextNum" in existingIds) nextNum++
+        _scanState.update {
+            it.copy(
+                treeId = "tree_$nextNum",
+                treeLabel = "Дерево №$nextNum"
+            )
+        }
+    }
+
+    fun setLeafIntegrityVerified(verified: Boolean) {
+        _scanState.update { it.copy(leafIntegrityVerified = verified) }
     }
 
     fun setActiveLandmark(key: LandmarkKey) {
@@ -279,7 +374,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             it.copy(
                 stage = ScanStage.SELECT,
                 pendingLeafForSave = null,
-                showLocationChooserDialog = false
+                showLocationChooserDialog = false,
+                replicateOfLeafId = null,
+                forceBlindMode = false
             )
         }
     }
@@ -292,6 +389,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             axisReferenceLengthMm = st.axisReferenceLengthMm
         )
         val zScore = LeafBioindicationEngine.calculateZScore(traits)
+        val isBlind = st.forceBlindMode || settingsRepo.settings.value.blindMeasurementMode
         val leaf = LeafAnalysis(
             id = "leaf_${UUID.randomUUID().toString().take(8)}",
             photoUrl = st.photoPath,
@@ -305,7 +403,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             axisReferenceLengthMm = st.axisReferenceLengthMm,
             detectionSource = st.detectionSource,
             exifLatitude = st.exifLatitude,
-            exifLongitude = st.exifLongitude
+            exifLongitude = st.exifLongitude,
+            treeId = st.treeId,
+            treeLabel = st.treeLabel,
+            replicateOfLeafId = st.replicateOfLeafId,
+            isBlindMeasurement = isBlind,
+            leafIntegrityVerified = st.leafIntegrityVerified
         )
 
         // If user already started scan for an explicit territory, save straight to it!
@@ -700,16 +803,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         settingsRepo.setIncludeDemoInExport(include)
     }
 
+    fun setBlindMeasurementMode(enabled: Boolean) {
+        settingsRepo.setBlindMeasurementMode(enabled)
+    }
+
+    fun setEnableZakharovScale(enabled: Boolean) {
+        settingsRepo.setEnableZakharovScale(enabled)
+    }
+
     fun shareLeafPassport(context: Context, territory: Territory, leaf: LeafAnalysis) {
+        val showZakharov = settingsRepo.settings.value.enableZakharovScale
         val rating = LeafBioindicationEngine.getEnvironmentalRating(leaf.zScore)
         val unit = if (leaf.axisReferenceLengthMm != null) "мм" else "% оси"
         val summary = buildString {
-            appendLine("Эко-паспорт листа берёзы повислой (Betula pendula)")
-            appendLine("Территория: ${territory.name}")
+            appendLine("Морфометрический паспорт листа берёзы повислой (Betula pendula)")
+            appendLine("Участок: ${territory.name}")
+            appendLine("Дерево: ${leaf.treeLabel} (${leaf.treeId})")
             appendLine("Координаты: ${"%.5f".format(territory.latitude)}, ${"%.5f".format(territory.longitude)}")
             appendLine("Образец: ${leaf.photoName}")
-            appendLine("Интегральный показатель Z: ${"%.4f".format(leaf.zScore)}")
-            appendLine("Класс по шкале Захарова: Балл ${rating.score} (${rating.status}, ${rating.rangeLabel})")
+            appendLine("Режим замера: ${if (leaf.isBlindMeasurement) "Слепой" else "Открытый"}${if (leaf.replicateOfLeafId != null) " · Повтор (ME)" else ""}")
+            appendLine("Интегральный индекс относительной асимметрии Z: ${"%.4f".format(leaf.zScore)}")
+            if (showZakharov) {
+                appendLine("Справочный ориентир Захарова (не диагноз по 1 листу): Балл ${rating.score} (${rating.rangeLabel})")
+            }
             appendLine()
             appendLine("Признаки Y1–Y5:")
             appendLine("• Y1 (Ширина): ${"%.4f".format(leaf.traits.t1Width.yDiff)} (Л=${"%.1f".format(leaf.traits.t1Width.xLeft)}, П=${"%.1f".format(leaf.traits.t1Width.xRight)} $unit)")

@@ -155,7 +155,12 @@ class JournalRepository(
             axisReferenceLengthMm = axisReferenceLengthMm,
             detectionSource = detectionSource.name,
             exifLatitude = exifLatitude,
-            exifLongitude = exifLongitude
+            exifLongitude = exifLongitude,
+            treeId = treeId,
+            treeLabel = treeLabel,
+            replicateOfLeafId = replicateOfLeafId,
+            isBlindMeasurement = isBlindMeasurement,
+            leafIntegrityVerified = leafIntegrityVerified
         )
     }
 
@@ -177,7 +182,12 @@ class JournalRepository(
             axisReferenceLengthMm = axisReferenceLengthMm,
             detectionSource = source,
             exifLatitude = exifLatitude,
-            exifLongitude = exifLongitude
+            exifLongitude = exifLongitude,
+            treeId = treeId,
+            treeLabel = treeLabel,
+            replicateOfLeafId = replicateOfLeafId,
+            isBlindMeasurement = isBlindMeasurement,
+            leafIntegrityVerified = leafIntegrityVerified
         )
     }
 }

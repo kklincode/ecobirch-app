@@ -1,14 +1,17 @@
 package ru.ecobirch.fa.app.ui.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -21,13 +24,18 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ru.ecobirch.fa.app.ui.components.SettingsPrivacyDialog
 import ru.ecobirch.fa.app.ui.screens.JournalScreen
 import ru.ecobirch.fa.app.ui.screens.MapScreen
 import ru.ecobirch.fa.app.ui.screens.MethodologyScreen
@@ -59,6 +67,7 @@ fun EcoBirchRoot(viewModel: MainViewModel) {
     val toastMsg by viewModel.toastMessage.collectAsStateWithLifecycle()
     val lastCrashLog by viewModel.lastCrashLog.collectAsStateWithLifecycle()
 
+    var showSettingsDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(toastMsg) {
@@ -70,31 +79,45 @@ fun EcoBirchRoot(viewModel: MainViewModel) {
     }
 
     Scaffold(
-        containerColor = EcoColors.Slate50,
+        containerColor = EcoColors.CanvasBg,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
-            NavigationBar(containerColor = Color.White) {
-                TABS.forEach { tab ->
-                    val selected = activeRoute == tab.route
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = { viewModel.navigateToTab(tab.route) },
-                        icon = { Icon(tab.icon, contentDescription = tab.label) },
-                        label = {
-                            Text(
-                                text = tab.label,
-                                fontSize = 11.sp,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+            Column {
+                HorizontalDivider(color = EcoColors.Hairline, thickness = 1.dp)
+                NavigationBar(
+                    containerColor = Color.White,
+                    tonalElevation = 0.dp
+                ) {
+                    TABS.forEach { tab ->
+                        val selected = activeRoute == tab.route
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = { viewModel.navigateToTab(tab.route) },
+                            icon = {
+                                Icon(
+                                    imageVector = tab.icon,
+                                    contentDescription = tab.label,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    text = tab.label,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = EcoColors.Emerald700,
+                                selectedTextColor = EcoColors.Emerald800,
+                                indicatorColor = EcoColors.Emerald100,
+                                unselectedIconColor = EcoColors.Slate500,
+                                unselectedTextColor = EcoColors.Slate500
                             )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = EcoColors.Emerald700,
-                            selectedTextColor = EcoColors.Emerald700,
-                            indicatorColor = EcoColors.Emerald100,
-                            unselectedIconColor = EcoColors.Slate500,
-                            unselectedTextColor = EcoColors.Slate500
                         )
-                    )
+                    }
                 }
             }
         }
@@ -108,44 +131,62 @@ fun EcoBirchRoot(viewModel: MainViewModel) {
                 "scan" -> ScanScreen(
                     state = scanState,
                     territories = territories,
+                    settings = settings,
                     viewModel = viewModel,
                     onOpenJournal = { viewModel.navigateToTab("journal") },
-                    onOpenMap = { viewModel.navigateToTab("map") }
+                    onOpenMap = { viewModel.navigateToTab("map") },
+                    onOpenSettings = { showSettingsDialog = true }
                 )
                 "map" -> MapScreen(
                     state = mapState,
                     territories = territories,
+                    showZakharovScale = settings.enableZakharovScale,
                     viewModel = viewModel
                 )
                 "journal" -> JournalScreen(
                     territories = territories,
                     focusedTerritoryId = focusedTerritoryId,
+                    showZakharovScale = settings.enableZakharovScale,
                     viewModel = viewModel,
                     onNavigateToMap = { viewModel.navigateToTab("map") },
                     onNavigateToScan = { viewModel.navigateToTab("scan") }
                 )
                 "methodology" -> MethodologyScreen(
-                    settings = settings,
-                    lastCrashLog = lastCrashLog,
-                    viewModel = viewModel
+                    onOpenSettings = { showSettingsDialog = true }
                 )
             }
         }
+    }
+
+    if (showSettingsDialog) {
+        SettingsPrivacyDialog(
+            settings = settings,
+            lastCrashLog = lastCrashLog,
+            onAcceptPrivacy = viewModel::setPrivacyAccepted,
+            onSaveGeminiConfig = viewModel::updateGeminiConfig,
+            onSetIncludeDemoExport = viewModel::setIncludeDemoInExport,
+            onSetBlindMeasurementMode = viewModel::setBlindMeasurementMode,
+            onSetEnableZakharovScale = viewModel::setEnableZakharovScale,
+            onDismissCrashLog = viewModel::dismissCrashLog,
+            onDismiss = { showSettingsDialog = false }
+        )
     }
 
     // Friendly recovery dialog if previous session crashed — guarantees user data was preserved
     if (!lastCrashLog.isNullOrBlank()) {
         AlertDialog(
             onDismissRequest = viewModel::dismissCrashLog,
-            title = { Text("Восстановление после сбоя") },
+            title = { Text("Восстановление после сбоя", fontSize = 19.sp, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "Предыдущая сессия завершилась с ошибкой. Ваш полевой журнал и фотографии листьев сохранены в локальной базе данных без потерь. Подробный стек-трейс доступен в Настройках."
+                    text = "Предыдущая сессия завершилась с ошибкой. Ваш полевой журнал и фотографии листьев сохранены в локальной базе данных без потерь. Подробный отчёт доступен в Настройках.",
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
                 )
             },
             confirmButton = {
                 TextButton(onClick = viewModel::dismissCrashLog) {
-                    Text("Понятно")
+                    Text("Понятно", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         )

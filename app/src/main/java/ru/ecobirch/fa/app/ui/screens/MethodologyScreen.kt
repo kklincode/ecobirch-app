@@ -14,14 +14,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,60 +42,77 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ru.ecobirch.fa.app.data.local.AppSettings
 import ru.ecobirch.fa.app.domain.math.LeafBioindicationEngine
-import ru.ecobirch.fa.app.ui.components.SettingsPrivacyDialog
-import ru.ecobirch.fa.app.ui.state.MainViewModel
 import ru.ecobirch.fa.app.ui.theme.EcoColors
 
 @Composable
 fun MethodologyScreen(
-    settings: AppSettings,
-    lastCrashLog: String?,
-    viewModel: MainViewModel
+    onOpenSettings: () -> Unit
 ) {
     var activeTab by remember { mutableStateOf("theory") } // theory | traits | scale | birch
     var selectedTrait by remember { mutableIntStateOf(1) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Header with Settings/Privacy button
+        // Editorial Header with prominent Settings button
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = EcoColors.Emerald50,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, EcoColors.Emerald100)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, tint = EcoColors.Emerald600, modifier = Modifier.padding(10.dp))
-                }
-                Column {
-                    Text("Методика оценки", fontWeight = FontWeight.ExtraBold, fontSize = 19.sp, color = EcoColors.Slate900)
-                    Text("В.М. Захаров · Betula pendula", fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = EcoColors.Slate500)
-                }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Методика оценки",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 24.sp,
+                    letterSpacing = (-0.5).sp,
+                    color = EcoColors.Slate900
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "В.М. Захаров · Betula pendula",
+                    fontSize = 13.5.sp,
+                    color = EcoColors.Slate500
+                )
             }
-            IconButton(onClick = { showSettingsDialog = true }) {
-                Icon(Icons.Default.Settings, contentDescription = "Настройки и приватность", tint = EcoColors.Slate700)
+            Surface(
+                onClick = onOpenSettings,
+                shape = RoundedCornerShape(99.dp),
+                color = EcoColors.SurfaceTonal
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Настройки",
+                        tint = EcoColors.Slate700,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Настройки",
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = EcoColors.Slate900
+                    )
+                }
             }
         }
 
-        // 4 Sub-tabs
+        // Modern Pill Segmented Tabs
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(EcoColors.Slate200.copy(alpha = 0.7f))
-                .padding(3.dp),
+                .clip(RoundedCornerShape(16.dp))
+                .background(EcoColors.SurfaceTonal)
+                .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             listOf(
@@ -108,17 +125,17 @@ fun MethodologyScreen(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(9.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(if (selected) Color.White else Color.Transparent)
                         .clickable { activeTab = id }
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 10.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = title,
-                        fontSize = 11.sp,
+                        fontSize = 13.5.sp,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (selected) EcoColors.Emerald700 else EcoColors.Slate700
+                        color = if (selected) EcoColors.Emerald800 else EcoColors.Slate700
                     )
                 }
             }
@@ -130,37 +147,32 @@ fun MethodologyScreen(
             "scale" -> ScaleTab()
             "birch" -> BirchTab()
         }
-    }
 
-    if (showSettingsDialog) {
-        SettingsPrivacyDialog(
-            settings = settings,
-            lastCrashLog = lastCrashLog,
-            onAcceptPrivacy = viewModel::setPrivacyAccepted,
-            onSaveGeminiConfig = viewModel::updateGeminiConfig,
-            onSetIncludeDemoExport = viewModel::setIncludeDemoInExport,
-            onDismissCrashLog = viewModel::dismissCrashLog,
-            onDismiss = { showSettingsDialog = false }
-        )
+        Spacer(modifier = Modifier.height(6.dp))
     }
 }
 
 @Composable
 private fun TheoryTab() {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         InfoCard(
-            title = "1. Цель биоиндикации",
-            body = "Метод основан на измерении флуктуирующей асимметрии (FA) — мелких ненаправленных отклонений от билатеральной симметрии листовой пластины берёзы повислой (Betula pendula Roth.). Антропогенный стресс (выхлопы, тяжёлые металлы, смог) нарушает стабильность развития растения, увеличивая интегральный показатель FA."
+            title = "1. Цифровая морфометрия и FA",
+            body = "Приложение измеряет 12 биологических ориентиров листа берёзы повислой (Betula pendula Roth.) и рассчитывает интегральный индекс относительной асимметрии Z по 5 парным признакам.\n\n" +
+                "Важно: сам по себе индекс Z ≠ «уровень загрязнения воздуха» и ≠ статистически доказанная флуктуирующая асимметрия (FA). Прежде чем говорить о FA, система проверяет каждый признак на направленную асимметрию (DA), антисимметрию (AS), размерную зависимость и ошибку измерения (ME)."
         )
         InfoCard(
-            title = "2. Правила сбора листьев",
-            body = "• Сбор ведётся с нижней части кроны деревьев на высоте 1,5–2 м.\n" +
-                "• Берут листья только с укороченных побегов, без механических повреждений и вредителей.\n" +
-                "• Для достоверной оценки территории по методике Захарова необходимо собрать не менее 10 листьев с 10 деревьев (в идеале 100 листьев — по 10 с каждого из 10 деревьев). Выборка n < 10 в приложении маркируется как предварительная."
+            title = "2. Иерархический сбор и слепые замеры",
+            body = "• Иерархия «Участок → Дерево → Лист»: листья с одного дерева коррелированы. Для исключения псевдорепликации фиксируйте treeId минимум по 5–10 деревьям на участке (укороченные побеги, высота 1,5–2 м, без повреждений).\n" +
+                "• Слепой режим (Kozlov 2015, 2025): знание происхождения образца вызывает подтверждающее смещение (confirmation bias). Включите «Слепой режим измерений» в Настройках и выполняйте повторные слепые замеры (ME) в Журнале."
         )
         InfoCard(
-            title = "3. Нормированная формула",
-            body = "Для каждого из 5 признаков рассчитывается относительная разница: Y_i = |X_лi - X_пi| / (X_лi + X_пi). Это полностью устраняет влияние абсолютного размера листа — сравнивать можно как крупные, так и мелкие листья без искажения результата."
+            title = "3. Формулы: знаковая и модульная",
+            body = "Для каждого признака сохраняются исходные значения X_л, X_п, знаковая относительная асимметрия A_s = (X_л − X_п)/(X_л + X_п) (для проверки DA и AS) и модульный индекс Y_i = |A_s|. Индекс листа: Z = (Y1 + Y2 + Y3 + Y4 + Y5)/5."
+        )
+        InfoCard(
+            title = "4. Ограничения метода и литература",
+            body = "Мета-анализ Májeková et al. (2024, Functional Ecology, DOI: 10.1111/1365-2435.14564) показал отсутствие связи со стрессом в 53% пар «вид × стресс». Adamovich & Olkova (2024) выявили высокие значения (0.064–0.076) на участках без превышения ПДК в связи с кислотностью и составом почв, а Erofeeva & Yakimov (2020) — смену типов асимметрии (DA/AS) у B. pendula.\n\n" +
+                "База: Palmer & Strobeck (1986); Захаров и др. (2000); Kozlov (2015, 2017, 2025); Graham (2021, DOI: 10.3390/sym13010009)."
         )
     }
 }
@@ -175,15 +187,14 @@ private fun TraitsTab(selectedTrait: Int, onSelectTrait: (Int) -> Unit) {
         5 to ("Признак 5: Угол 2-й боковой жилки" to "Угол (в градусах) между направлением центральной главной жилки (основание → вершина) и 2-й боковой жилкой.")
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        // Interactive Vector Leaf Diagram
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1.15f)
-                .clip(RoundedCornerShape(18.dp))
+                .aspectRatio(1.18f)
+                .clip(RoundedCornerShape(22.dp))
                 .background(EcoColors.Slate950)
-                .padding(16.dp),
+                .padding(18.dp),
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -200,9 +211,8 @@ private fun TraitsTab(selectedTrait: Int, onSelectTrait: (Int) -> Unit) {
                     close()
                 }
                 drawPath(outline, Color(0xFF052E16))
-                drawPath(outline, Color(0xFF22C55E), style = Stroke(width = 3f))
+                drawPath(outline, Color(0xFF22C55E), style = Stroke(width = 3.2f))
 
-                // Main midrib & lateral veins
                 drawLine(Color(0xFF4ADE80), p(50f, 88f), p(50f, 10f), strokeWidth = 4f)
                 drawLine(Color(0xFF4ADE80).copy(alpha = 0.65f), p(50f, 70f), p(22f, 52f), strokeWidth = 3f)
                 drawLine(Color(0xFF4ADE80).copy(alpha = 0.65f), p(50f, 70f), p(78f, 52f), strokeWidth = 3f)
@@ -213,8 +223,8 @@ private fun TraitsTab(selectedTrait: Int, onSelectTrait: (Int) -> Unit) {
                 val dash = PathEffect.dashPathEffect(floatArrayOf(10f, 6f), 0f)
                 when (selectedTrait) {
                     1 -> {
-                        drawLine(highlight, p(50f, 54f), p(15f, 54f), strokeWidth = 5f, pathEffect = dash)
-                        drawLine(highlight, p(50f, 54f), p(85f, 54f), strokeWidth = 5f, pathEffect = dash)
+                        drawLine(highlight, p(50f, 54f), p(15f, 54f), strokeWidth = 5.5f, pathEffect = dash)
+                        drawLine(highlight, p(50f, 54f), p(85f, 54f), strokeWidth = 5.5f, pathEffect = dash)
                     }
                     2 -> {
                         drawLine(highlight, p(50f, 50f), p(26f, 32f), strokeWidth = 6f)
@@ -222,48 +232,49 @@ private fun TraitsTab(selectedTrait: Int, onSelectTrait: (Int) -> Unit) {
                     }
                     3 -> {
                         drawLine(highlight, p(50f, 70f), p(50f, 50f), strokeWidth = 7f)
-                        drawCircle(highlight, 9f, p(50f, 70f))
-                        drawCircle(highlight, 9f, p(50f, 50f))
+                        drawCircle(highlight, 10f, p(50f, 70f))
+                        drawCircle(highlight, 10f, p(50f, 50f))
                     }
                     4 -> {
-                        drawLine(highlight, p(22f, 52f), p(26f, 32f), strokeWidth = 5f, pathEffect = dash)
-                        drawLine(highlight, p(78f, 52f), p(74f, 32f), strokeWidth = 5f, pathEffect = dash)
+                        drawLine(highlight, p(22f, 52f), p(26f, 32f), strokeWidth = 5.5f, pathEffect = dash)
+                        drawLine(highlight, p(78f, 52f), p(74f, 32f), strokeWidth = 5.5f, pathEffect = dash)
                     }
                     5 -> {
-                        drawLine(highlight, p(50f, 50f), p(50f, 22f), strokeWidth = 5f)
-                        drawLine(highlight, p(50f, 50f), p(26f, 32f), strokeWidth = 5f)
-                        drawLine(highlight, p(50f, 50f), p(74f, 32f), strokeWidth = 5f)
+                        drawLine(highlight, p(50f, 50f), p(50f, 22f), strokeWidth = 5.5f)
+                        drawLine(highlight, p(50f, 50f), p(26f, 32f), strokeWidth = 5.5f)
+                        drawLine(highlight, p(50f, 50f), p(74f, 32f), strokeWidth = 5.5f)
                     }
                 }
             }
-            Text(
-                text = "Признак $selectedTrait",
-                color = EcoColors.Emerald100,
-                fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .background(EcoColors.Slate900, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            )
+            Surface(
+                color = EcoColors.Emerald900,
+                shape = RoundedCornerShape(99.dp),
+                modifier = Modifier.align(Alignment.TopStart)
+            ) {
+                Text(
+                    text = "Признак $selectedTrait",
+                    color = EcoColors.Emerald100,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                )
+            }
         }
 
         traitDescriptions.forEach { (id, pair) ->
             val isSel = selectedTrait == id
             Surface(
                 onClick = { onSelectTrait(id) },
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(18.dp),
                 color = if (isSel) EcoColors.Emerald50 else Color.White,
-                border = androidx.compose.foundation.BorderStroke(
-                    width = if (isSel) 1.5.dp else 1.dp,
-                    color = if (isSel) EcoColors.Emerald600 else EcoColors.Slate200
-                ),
+                shadowElevation = if (isSel) 0.dp else 1.dp,
+                border = if (isSel) androidx.compose.foundation.BorderStroke(1.5.dp, EcoColors.Emerald600) else null,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(pair.first, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = EcoColors.Slate900)
-                    Text(pair.second, fontSize = 11.sp, color = EcoColors.Slate700)
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(pair.first, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = EcoColors.Slate900)
+                    Text(pair.second, fontSize = 13.5.sp, lineHeight = 19.sp, color = EcoColors.Slate700)
                 }
             }
         }
@@ -276,34 +287,34 @@ private fun ScaleTab() {
         LeafBioindicationEngine.getEnvironmentalRating(it)
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         InfoCard(
-            title = "Классическая 5-балльная шкала Захарова (Betula pendula)",
-            body = "Интегральный показатель флуктуирующей асимметрии (FA) вычисляется как среднее арифметическое показателей Z всех собранных листьев на территории (рекомендуется n ≥ 10 листьев)."
+            title = "Справочная 5-балльная шкала Захарова (Betula pendula)",
+            body = "Пороги В.М. Захарова и др. (2000) приведены как региональный справочный ориентир и по умолчанию отключены в настройках (режим чистой морфометрии). Показатели <0.040 .. >0.054 не являются универсальным доказательством загрязнения воздуха без локального контроля и проверки DA/AS/ME (Májeková et al. 2024; Adamovich & Olkova 2024)."
         )
 
         scores.forEach { r ->
             Surface(
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(18.dp),
                 color = Color.White,
-                border = androidx.compose.foundation.BorderStroke(1.dp, EcoColors.Slate200),
+                shadowElevation = 1.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Surface(
                         color = EcoColors.scoreColor(r.score),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.size(42.dp)
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
                                 text = "${r.score}",
                                 fontWeight = FontWeight.Black,
-                                fontSize = 18.sp,
+                                fontSize = 20.sp,
                                 color = EcoColors.scoreTextColor(r.score)
                             )
                         }
@@ -311,19 +322,26 @@ private fun ScaleTab() {
                     Column(modifier = Modifier.weight(1f)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(r.status, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = EcoColors.Slate900)
-                            Text(
-                                text = r.rangeLabel,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                color = EcoColors.Slate700
-                            )
+                            Text(r.status, fontWeight = FontWeight.Bold, fontSize = 15.5.sp, color = EcoColors.Slate900)
+                            Surface(
+                                color = EcoColors.SurfaceTonal,
+                                shape = RoundedCornerShape(99.dp)
+                            ) {
+                                Text(
+                                    text = r.rangeLabel,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.5.sp,
+                                    color = EcoColors.Slate700,
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
+                                )
+                            }
                         }
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(r.description, fontSize = 11.sp, color = EcoColors.Slate500)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(r.description, fontSize = 13.5.sp, lineHeight = 19.sp, color = EcoColors.Slate500)
                     }
                 }
             }
@@ -333,7 +351,7 @@ private fun ScaleTab() {
 
 @Composable
 private fun BirchTab() {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         InfoCard(
             title = "Как отличить берёзу повислую (Betula pendula)",
             body = "• Поникшие тонкие молодые ветви («плакучая» крона).\n" +
@@ -350,14 +368,14 @@ private fun BirchTab() {
 @Composable
 private fun InfoCard(title: String, body: String) {
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = Color.White,
-        border = androidx.compose.foundation.BorderStroke(1.dp, EcoColors.Slate200),
+        shadowElevation = 1.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = EcoColors.Slate900)
-            Text(body, fontSize = 12.sp, color = EcoColors.Slate700, lineHeight = 18.sp)
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = EcoColors.Slate900)
+            Text(body, fontSize = 14.5.sp, color = EcoColors.Slate700, lineHeight = 22.sp)
         }
     }
 }

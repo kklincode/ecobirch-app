@@ -127,27 +127,112 @@ class LeafBioindicationEngineTest {
         val smallList = List(5) { idx -> sampleLeaf.copy(id = "l$idx", zScore = 0.030 + idx * 0.002) }
         val smallStats = LeafBioindicationEngine.calculateTerritoryStatistics(smallList)
         assertEquals(5, smallStats.sampleCount)
+        assertEquals(5, smallStats.primaryLeafCount)
         assertFalse(smallStats.isReliable)
+        assertFalse(smallStats.isHierarchicallyReliable)
         assertTrue(smallStats.standardError > 0.0)
         assertTrue(smallStats.ci95HalfWidth > smallStats.standardError)
 
-        val reliableList = List(10) { idx -> sampleLeaf.copy(id = "r$idx", zScore = 0.035) }
-        val reliableStats = LeafBioindicationEngine.calculateTerritoryStatistics(reliableList)
-        assertTrue(reliableStats.isReliable)
-        assertEquals(0.035, reliableStats.meanFA, 1e-9)
+        val singleTreeList = List(10) { idx -> sampleLeaf.copy(id = "r$idx", treeId = "tree_1", zScore = 0.035) }
+        val singleTreeStats = LeafBioindicationEngine.calculateTerritoryStatistics(singleTreeList)
+        assertTrue(singleTreeStats.isReliable)
+        assertEquals(1, singleTreeStats.treeCount)
+        assertFalse(singleTreeStats.isHierarchicallyReliable)
+        assertEquals(0.035, singleTreeStats.meanFA, 1e-9)
+
+        val multiTreeList = List(10) { idx ->
+            sampleLeaf.copy(
+                id = "m$idx",
+                treeId = "tree_${(idx % 5) + 1}",
+                treeLabel = "Дерево №${(idx % 5) + 1}",
+                zScore = 0.035
+            )
+        }
+        val multiTreeStats = LeafBioindicationEngine.calculateTerritoryStatistics(multiTreeList)
+        assertEquals(5, multiTreeStats.treeCount)
+        assertTrue(multiTreeStats.isHierarchicallyReliable)
+        assertEquals(0.035, multiTreeStats.treeMeanFA, 1e-9)
     }
 
     @Test
-    fun demoTerritoriesMatchDistinctEnvironmentalScores() {
+    fun demoTerritoriesMatchDistinctEnvironmentalScoresAndHierarchy() {
         val demos = SampleTerritoriesFactory.createDemoTerritories()
         assertEquals(3, demos.size)
         val s1 = LeafBioindicationEngine.calculateTerritoryStatistics(demos[0].leaves)
         val s2 = LeafBioindicationEngine.calculateTerritoryStatistics(demos[1].leaves)
         val s3 = LeafBioindicationEngine.calculateTerritoryStatistics(demos[2].leaves)
         assertTrue(s1.isReliable && s2.isReliable && s3.isReliable)
+        assertTrue(s1.isHierarchicallyReliable && s2.isHierarchicallyReliable && s3.isHierarchicallyReliable)
+        assertEquals(6, s1.treeCount)
+        assertEquals(12, s1.primaryLeafCount)
+        assertEquals(2, s1.replicateCount)
+        assertTrue((s1.measurementError?.pairedLeafCount ?: 0) == 2)
         assertEquals(1, s1.indicativeRating?.score)
         assertEquals(3, s2.indicativeRating?.score)
         assertEquals(5, s3.indicativeRating?.score)
+    }
+
+    @Test
+    fun signedAsymmetryDetectsDirectionalAsymmetryAcrossLeaves() {
+        val pts = SampleTerritoriesFactory.healthyTemplatePoints.copy(
+            leftWidthMax = LeafPoint(10f, 52f),
+            rightWidthMax = LeafPoint(80f, 52f) // systematically wider left half on every leaf
+        )
+        val traits = LeafBioindicationEngine.calculateLeafTraits(pts, aspectRatio = 1.0f)
+        assertTrue(traits.t1Width.signedRelative > 0.0)
+        assertEquals(traits.t1Width.yDiff, kotlin.math.abs(traits.t1Width.signedRelative), 1e-9)
+
+        val biasedLeaves = List(12) { idx ->
+            val shiftedPts = pts.copy(
+                leftWidthMax = LeafPoint(10f - (idx % 3) * 0.5f, 52f)
+            )
+            val tr = LeafBioindicationEngine.calculateLeafTraits(shiftedPts, aspectRatio = 1.0f)
+            LeafAnalysis(
+                id = "da_$idx",
+                treeId = "tree_${(idx % 6) + 1}",
+                photoName = "DA $idx",
+                points = shiftedPts,
+                traits = tr,
+                zScore = LeafBioindicationEngine.calculateZScore(tr),
+                timestamp = "2026-11-16T00:00:00Z"
+            )
+        }
+        val stats = LeafBioindicationEngine.calculateTerritoryStatistics(biasedLeaves)
+        assertTrue(stats.hasDirectionalAsymmetry)
+        assertTrue(stats.traitDiagnostics[0].hasDirectionalAsymmetry)
+        assertTrue(stats.faValidationStatus.contains("DA"))
+    }
+
+    @Test
+    fun measurementErrorReportExcludesReplicatesFromPrimaryMeanAndMeasuresVariance() {
+        val pts = SampleTerritoriesFactory.moderateTemplatePoints
+        val traits = LeafBioindicationEngine.calculateLeafTraits(pts)
+        val baseZ = LeafBioindicationEngine.calculateZScore(traits)
+
+        val primaries = (0 until 6).map { idx ->
+            LeafAnalysis(
+                id = "p_$idx",
+                treeId = "tree_${idx + 1}",
+                photoName = "P$idx",
+                points = pts,
+                traits = traits,
+                zScore = baseZ + (idx - 2.5) * 0.008,
+                timestamp = "2026-11-16T00:00:00Z"
+            )
+        }
+        val replicates = listOf(
+            primaries[0].copy(id = "rep_0", replicateOfLeafId = "p_0", isBlindMeasurement = true, zScore = primaries[0].zScore + 0.001),
+            primaries[1].copy(id = "rep_1", replicateOfLeafId = "p_1", isBlindMeasurement = true, zScore = primaries[1].zScore - 0.001)
+        )
+        val stats = LeafBioindicationEngine.calculateTerritoryStatistics(primaries + replicates)
+        assertEquals(6, stats.primaryLeafCount)
+        assertEquals(2, stats.replicateCount)
+        assertEquals(baseZ, stats.meanFA, 1e-6)
+        val me = stats.measurementError
+        assertTrue(me != null)
+        assertEquals(2, me!!.pairedLeafCount)
+        assertEquals(0.001, me.meanAbsoluteDiffZ, 1e-6)
+        assertTrue(me.measurementErrorPercent in 0.0..100.0)
     }
 
     @Test

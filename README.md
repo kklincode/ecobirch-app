@@ -1,59 +1,42 @@
-# Betula — ЭкоБерёза ФА (Android)
+# Берёза — Цифровая морфометрия и ФА (*Betula pendula*, Android v3.0)
 
-Нативное Android-приложение (Kotlin + Jetpack Compose + Material 3) для экспресс-биоиндикации качества окружающей среды по флуктуирующей асимметрии (FA) листьев берёзы повислой (*Betula pendula Roth.*) по методике чл.-корр. РАН В.М. Захарова.
-
-Проект разработан на базе веб-прототипа [kklincode/ecobirch-app](https://github.com/kklincode/ecobirch-app) с устранением всех критических замечаний из `ecobirch-audit.md`.
+Нативное Android-приложение (Kotlin + Jetpack Compose + Material 3 + SQLite Room) для цифровой листовой морфометрии, статистической оценки флуктуирующей асимметрии (FA) берёзы повислой (*Betula pendula Roth.*) и полевого мониторинга с контролем биостатистических допущений (DA, AS, ME, псевдорепликация, слепой протокол).
 
 ---
 
-## Ключевые особенности и исправления
+## Научная архитектура v3.0
 
-- **Полностью нативный Android-стек (без Chrome/TWA и без зависимости от GMS)**:
-  - `applicationId = "ru.ecobirch.fa.app"`, `minSdk = 24`, `targetSdk = 35` (актуально для RuStore).
-  - Работает офлайн на любых Android-устройствах, включая смартфоны без Google Play Services.
-- **Научно корректная математика (`LeafBioindicationEngine`)**:
-  - Восстановлена классическая 5-балльная шкала Захарова:
-    - **I балл:** `< 0.040` — Условно нормальное
-    - **II балл:** `0.040 – 0.044` — Начальные отклонения
-    - **III балл:** `0.045 – 0.049` — Средний уровень загрязнения
-    - **IV балл:** `0.050 – 0.054` — Существенные отклонения
-    - **V балл:** `> 0.054` — Критическое состояние
-  - Изотропная геометрия с учётом пропорций снимка (`aspectRatio`).
-  - Признак 5 (угол 2-й боковой жилки) вычисляется относительно единого вектора центральной жилки (`base -> tip`).
-  - Честные единицы измерения: по умолчанию `% от длины оси листа` (без фиктивных миллиметров), опциональная ручная калибровка эталона в `мм`.
-  - Статистика по территориям: $n$, $SD$, $SE$, 95% доверительный интервал ($t$-критерий Стьюдента) и маркировка `Предв. (n < 10)` при малой выборке.
-- **Высокоточная калибровка 12 точек (`LeafCalibrationCanvas`)**:
-  - Жесты pinch-to-zoom (`1×–5×`) и панорамирование.
-  - Живая круглая **лупа 2.6×** при перетаскивании каждой точки.
-  - Панель быстрого выбора всех 12 ориентиров + крестовина микросдвига (`0.3%` шаг).
-- **Автономная работа и приватность (152-ФЗ)**:
-  - Локальный детектор контура листа (`LeafLandmarkDetector`) на чистом Kotlin/Bitmap без отправки фото в облако.
-  - Опциональная поддержка Gemini Vision API (только при добровольном согласии и вводе собственного API-ключа в Настройках).
-  - Надёжная локальная БД **SQLite Room** + хранение сжатых фото в `filesDir/leaf_photos/` с чтением EXIF GPS/ориентации.
-  - Безопасная обработка сбоев (логирование в `last_crash.txt` без удаления журнала) и двойное подтверждение очистки с предложением экспорта в JSON.
-- **Карта OpenStreetMap (`osmdroid`)**:
-  - Цветовые маркеры территорий по шкале Захарова.
-  - Поиск адресов (Nominatim + Photon + прямые координаты) и обратный геокодинг без платных API-ключей.
+Полная спецификация приведена в [`docs/SCIENTIFIC_SPEC_V3.md`](docs/SCIENTIFIC_SPEC_V3.md), а специализированные научные инструкции — в каталоге [`docs/skills/`](docs/skills/).
+
+### Ключевые научно-методические обновления
+- **Иерархическая модель выборки (`Territory → Tree → Leaf`)**:
+  - Каждое измерение привязывается к конкретному дереву (`treeId`, `treeLabel`), чтобы не допускать псевдорепликации.
+  - Междревесная статистика (`treeMeanFA`, `treeLevelSE`, 95% ДИ по $t$-критерию Стьюдента) рассчитывается по усреднённым показателям первичных деревьев.
+- **Знаковая асимметрия и проверка допущений FA (`LeafBioindicationEngine`)**:
+  - Для каждого признака Y1–Y5 хранятся $X_{\text{л}}$, $X_{\text{п}}$, **знаковая** относительная асимметрия $A_s = (X_{\text{л}} - X_{\text{п}})/(X_{\text{л}} + X_{\text{п}})$ и модульный индекс $Y_i = |A_s|$.
+  - Автоматически диагностируются **направленная асимметрия (DA)**, **антисимметрия (AS)**, **размерная зависимость** и **ошибка измерения (ME)** по слепым повторным замерам (`replicateOfLeafId`).
+- **Слепой режим измерений (Kozlov 2015, 2025; Graham 2021)**:
+  - Включается в настройках или запускается при нажатии **«Повтор (ME)»** в Журнале: скрывает название участка, $Z$, $Y_1\dots Y_5$ и баллы до сохранения результата.
+- **Режим чистой морфометрии по умолчанию**:
+  - Ориентировочная 5-балльная шкала В.М. Захарова (2000) отключена по умолчанию (`enableZakharovScale = false`) и при включении маркируется как региональный справочный ориентир с предупреждением о смешивающих факторах (Májeková et al. 2024; Adamovich & Olkova 2024; Erofeeva & Yakimov 2020).
+- **Бесшовная миграция Room v1 → v2 (`MIGRATION_1_2`)**:
+  - Пользовательские данные, сохранённые в версии 1, полностью сохраняются при обновлении с безопасными значениями по умолчанию.
 
 ---
 
-## Сборка в Android Studio или через CLI
+## Сборка и тестирование
 
 ### Требования
 - **JDK 17**
 - **Android SDK** (`compileSdk = 35`, `build-tools = 35.0.0`)
 
-### Команды сборки
+### Команды сборки (рекомендуется запускать последовательно)
 
 ```bash
-# Запуск модульных тестов доменной математики и статистики
-./gradlew testDebugUnitTest
-
-# Сборка отладочного APK
+./gradlew compileDebugUnitTestKotlin
+./gradlew testDebugUnitTest --rerun
 ./gradlew assembleDebug
-
-# Сборка релизного APK / AAB (для RuStore потребуется настроить signingConfig)
-./gradlew assembleRelease
+./gradlew lintDebug
 ```
 
 ---
@@ -61,20 +44,23 @@
 ## Структура проекта
 
 ```
+docs/
+├── SCIENTIFIC_SPEC_V3.md               # Научно-техническое ТЗ v3.0 с DOI-ссылками
+└── skills/                             # 7 модульных SKILL.md (литература, аудит, ботаника, CV, биостатистика, QA)
 app/src/main/java/ru/ecobirch/fa/app/
 ├── domain/
-│   ├── model/LeafModels.kt             # Модели точек, признаков Y1–Y5, территорий
-│   ├── math/LeafBioindicationEngine.kt # Формулы Захарова, геометрия и статистика (n, SE, 95% CI)
-│   └── sample/SampleTerritoriesFactory.kt # Учебные шаблоны и изолированные демо-территории
+│   ├── model/LeafModels.kt             # Иерархические модели, Signed/Unsigned признаки, DA/AS/ME отчёты
+│   ├── math/LeafBioindicationEngine.kt # Биостатистика (DA, AS, ME, tree-level 95% CI)
+│   └── sample/SampleTerritoriesFactory.kt # Изолированные демо-участки (6 деревьев, 12 первичных + 2 ME повтора)
 ├── vision/
-│   └── LeafLandmarkDetector.kt         # Офлайн-сегментация контура листа и авто-разметка 12 точек
+│   └── LeafLandmarkDetector.kt         # Офлайн-детектор контура листа и 12 ориентиров
 ├── data/
-│   ├── local/                          # Room DB, PhotoStorageManager (EXIF), SettingsRepository
+│   ├── local/                          # Room DB v2 (MIGRATION_1_2), PhotoStorageManager (EXIF), SettingsRepository
 │   ├── remote/                         # GeocodingService (OSM Nominatim/Photon), GeminiLeafAnalyzer
 │   └── repository/JournalRepository.kt # Репозиторий и совместимый JSON импорт/экспорт
 └── ui/
-    ├── components/                     # LeafCalibrationCanvas (зум + лупа), FACharts, EcoPassport, Настройки
-    ├── screens/                        # ScanScreen (CameraX), MapScreen (OSM), JournalScreen, MethodologyScreen
-    ├── state/MainViewModel.kt          # Состояние экранов и геолокация без GMS
+    ├── components/                     # LeafCalibrationCanvas (зум + лупа), FACharts, EcoPassportDialog, SettingsPrivacySheet
+    ├── screens/                        # ScanScreen, MapScreen (OSM), JournalScreen, MethodologyScreen
+    ├── state/MainViewModel.kt          # Состояние экранов, treeId, blind/ME режим, геолокация без GMS
     └── navigation/EcoBirchNav.kt       # Навигация Material 3
 ```

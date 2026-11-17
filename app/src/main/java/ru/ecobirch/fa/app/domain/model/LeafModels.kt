@@ -91,7 +91,16 @@ data class TraitValues(
     val xLeft: Double,
     val xRight: Double,
     val yDiff: Double
-)
+) {
+    val signedDiff: Double
+        get() = xLeft - xRight
+
+    val signedRelative: Double
+        get() {
+            val sum = xLeft + xRight
+            return if (sum <= 1e-9) 0.0 else (xLeft - xRight) / sum
+        }
+}
 
 @Serializable
 data class LeafTraits(
@@ -124,7 +133,12 @@ data class LeafAnalysis(
     val axisReferenceLengthMm: Double? = null,
     val detectionSource: DetectionSource = DetectionSource.MANUAL_DEFAULT,
     val exifLatitude: Double? = null,
-    val exifLongitude: Double? = null
+    val exifLongitude: Double? = null,
+    val treeId: String = "tree_1",
+    val treeLabel: String = "Дерево №1",
+    val replicateOfLeafId: String? = null,
+    val isBlindMeasurement: Boolean = false,
+    val leafIntegrityVerified: Boolean = true
 )
 
 @Serializable
@@ -148,18 +162,63 @@ data class EnvironmentalRating(
     val description: String
 )
 
+enum class AsymmetryPattern {
+    FLUCTUATING,
+    DIRECTIONAL,
+    ANTISYMMETRY,
+    INSUFFICIENT_DATA
+}
+
+data class TraitDiagnostics(
+    val traitIndex: Int,
+    val label: String,
+    val sampleCount: Int,
+    val meanUnsignedY: Double,
+    val meanSignedRelative: Double,
+    val directionalTStat: Double,
+    val hasDirectionalAsymmetry: Boolean,
+    val excessKurtosis: Double,
+    val hasAntisymmetrySuspected: Boolean,
+    val sizeCorrelationR: Double,
+    val hasSizeDependence: Boolean,
+    val pattern: AsymmetryPattern
+)
+
+data class MeasurementErrorReport(
+    val pairedLeafCount: Int,
+    val meanAbsoluteDiffZ: Double,
+    val technicalVarianceME: Double,
+    val sampleVarianceTotal: Double,
+    val measurementErrorPercent: Double,
+    val isAcceptableME: Boolean
+)
+
 data class TerritoryStatistics(
     val sampleCount: Int,
+    val primaryLeafCount: Int = sampleCount,
+    val treeCount: Int = if (sampleCount > 0) 1 else 0,
+    val replicateCount: Int = 0,
     val meanFA: Double,
+    val treeMeanFA: Double = meanFA,
     val standardDeviation: Double,
     val standardError: Double,
+    val treeLevelSE: Double = standardError,
     val ci95HalfWidth: Double,
+    val treeLevelCi95HalfWidth: Double = ci95HalfWidth,
     val minZ: Double,
     val maxZ: Double,
-    val isReliable: Boolean, // true when sampleCount >= RELIABLE_MIN_SAMPLES (10)
+    val isReliable: Boolean, // true when primaryLeafCount >= RELIABLE_MIN_SAMPLES (10)
+    val isHierarchicallyReliable: Boolean = false, // true when trees >= 5, n >= 10, no DA/AS
+    val hasDirectionalAsymmetry: Boolean = false,
+    val hasAntisymmetry: Boolean = false,
+    val hasSizeDependence: Boolean = false,
+    val traitDiagnostics: List<TraitDiagnostics> = emptyList(),
+    val measurementError: MeasurementErrorReport? = null,
+    val faValidationStatus: String = "Не проверено",
     val indicativeRating: EnvironmentalRating?
 ) {
     companion object {
         const val RELIABLE_MIN_SAMPLES = 10
+        const val MIN_TREES_RECOMMENDED = 5
     }
 }

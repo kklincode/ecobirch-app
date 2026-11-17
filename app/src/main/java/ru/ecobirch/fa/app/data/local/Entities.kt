@@ -44,7 +44,12 @@ data class LeafAnalysisEntity(
     val axisReferenceLengthMm: Double?,
     val detectionSource: String,
     val exifLatitude: Double?,
-    val exifLongitude: Double?
+    val exifLongitude: Double?,
+    val treeId: String = "tree_1",
+    val treeLabel: String = "Дерево №1",
+    val replicateOfLeafId: String? = null,
+    val isBlindMeasurement: Boolean = false,
+    val leafIntegrityVerified: Boolean = true
 )
 
 data class TerritoryWithLeaves(
